@@ -1,26 +1,31 @@
 @import "tailwindcss";
 
 @layer base {
-  :root {
-    --font-display: 'Cinzel', Georgia, serif;
-    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-  }
+	:root {
+		--font-display: "Cinzel", Georgia, serif;
+		--font-sans:
+			"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+		--font-mono: "JetBrains Mono", monospace;
+	}
 
-  body {
-    font-family: var(--font-sans);
-    background-color: #090b10;
-    color: #f3f4f6;
-    user-select: none;
-    overflow: hidden;
-  }
+	body {
+		font-family: var(--font-sans);
+		background-color: #090b10;
+		color: #f3f4f6;
+		user-select: none;
+		overflow: hidden;
+	}
 
-  h1, h2, h3, .font-display {
-    font-family: var(--font-display);
-  }
+	h1,
+	h2,
+	h3,
+	.font-display {
+		font-family: var(--font-display);
+	}
 
-  .font-mono, .tabular-nums {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-  }
+	.font-mono,
+	.tabular-nums {
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums;
+	}
 }

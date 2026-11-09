@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 /**
  * 1. POST-PROCESSING SHADER PASS: BATTLE-WORN CRITICAL DUEL SHADER (< 30% HP)
@@ -7,21 +7,21 @@ import * as THREE from 'three';
  * a fighter's HP drops below 30%.
  */
 export const BattleWornShader = {
-  uniforms: {
-    tDiffuse: { value: null as THREE.Texture | null },
-    uTime: { value: 0.0 },
-    uIntensity: { value: 0.0 }, // 0.0 = pristine, > 0.0 = active (< 30% HP)
-    uCriticalPulse: { value: 0.0 }, // spikes on hits during < 30% HP
-    uAspect: { value: 1.777 },
-  },
-  vertexShader: /* glsl */ `
+	uniforms: {
+		tDiffuse: { value: null as THREE.Texture | null },
+		uTime: { value: 0.0 },
+		uIntensity: { value: 0.0 }, // 0.0 = pristine, > 0.0 = active (< 30% HP)
+		uCriticalPulse: { value: 0.0 }, // spikes on hits during < 30% HP
+		uAspect: { value: 1.777 },
+	},
+	vertexShader: /* glsl */ `
     varying vec2 vUv;
     void main() {
       vUv = uv;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `,
-  fragmentShader: /* glsl */ `
+	fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform float uTime;
     uniform float uIntensity;
@@ -144,33 +144,33 @@ export const BattleWornShader = {
  * procedural tectonic cracks & flickering molten scars split open across the 3D arena stone beneath their feet!
  */
 export function createArenaBattleScarDisc(): {
-  mesh: THREE.Mesh;
-  uniforms: {
-    uTime: { value: number };
-    uIntensity: { value: number };
-  };
+	mesh: THREE.Mesh;
+	uniforms: {
+		uTime: { value: number };
+		uIntensity: { value: number };
+	};
 } {
-  const uniforms = {
-    uTime: { value: 0 },
-    uIntensity: { value: 0 },
-  };
+	const uniforms = {
+		uTime: { value: 0 },
+		uIntensity: { value: 0 },
+	};
 
-  const mat = new THREE.ShaderMaterial({
-    uniforms,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    polygonOffset: true,
-    polygonOffsetFactor: -4,
-    polygonOffsetUnits: -4,
-    vertexShader: /* glsl */ `
+	const mat = new THREE.ShaderMaterial({
+		uniforms,
+		transparent: true,
+		depthWrite: false,
+		blending: THREE.AdditiveBlending,
+		polygonOffset: true,
+		polygonOffsetFactor: -4,
+		polygonOffsetUnits: -4,
+		vertexShader: /* glsl */ `
       varying vec2 vUv;
       void main() {
         vUv = uv * 2.0 - 1.0;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
-    fragmentShader: /* glsl */ `
+		fragmentShader: /* glsl */ `
       uniform float uTime;
       uniform float uIntensity;
       varying vec2 vUv;
@@ -244,14 +244,14 @@ export function createArenaBattleScarDisc(): {
         gl_FragColor = vec4(clamp(col, vec3(0.0), vec3(1.5)), alpha);
       }
     `,
-  });
+	});
 
-  const mesh = new THREE.Mesh(new THREE.CircleGeometry(4.25, 64), mat);
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.y = 0.028;
-  mesh.visible = false;
+	const mesh = new THREE.Mesh(new THREE.CircleGeometry(4.25, 64), mat);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.position.y = 0.028;
+	mesh.visible = false;
 
-  return { mesh, uniforms };
+	return { mesh, uniforms };
 }
 
 /**
@@ -261,75 +261,76 @@ export function createArenaBattleScarDisc(): {
  */
 let _sharedArmorScarTex: THREE.CanvasTexture | null = null;
 export function getSharedArmorScarTexture(): THREE.CanvasTexture {
-  if (_sharedArmorScarTex) return _sharedArmorScarTex;
+	if (_sharedArmorScarTex) return _sharedArmorScarTex;
 
-  const size = 256;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
+	const size = 256;
+	const canvas = document.createElement("canvas");
+	canvas.width = size;
+	canvas.height = size;
+	const ctx = canvas.getContext("2d")!;
 
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, size, size);
+	ctx.fillStyle = "#000000";
+	ctx.fillRect(0, 0, size, size);
 
-  // Draw jagged branching lightning/fracture scars across the UV space
-  const drawCrackBranch = (
-    x0: number,
-    y0: number,
-    angle: number,
-    length: number,
-    depth: number
-  ) => {
-    if (depth <= 0 || length < 6) return;
-    let cx = x0;
-    let cy = y0;
-    const steps = 8;
-    const stepLen = length / steps;
+	// Draw jagged branching lightning/fracture scars across the UV space
+	const drawCrackBranch = (
+		x0: number,
+		y0: number,
+		angle: number,
+		length: number,
+		depth: number,
+	) => {
+		if (depth <= 0 || length < 6) return;
+		let cx = x0;
+		let cy = y0;
+		const steps = 8;
+		const stepLen = length / steps;
 
-    // Outer crimson/amber glow
-    ctx.strokeStyle = depth > 1 ? 'rgba(244, 63, 94, 0.55)' : 'rgba(245, 158, 11, 0.38)';
-    ctx.lineWidth = depth * 3.2;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
+		// Outer crimson/amber glow
+		ctx.strokeStyle =
+			depth > 1 ? "rgba(244, 63, 94, 0.55)" : "rgba(245, 158, 11, 0.38)";
+		ctx.lineWidth = depth * 3.2;
+		ctx.lineCap = "round";
+		ctx.beginPath();
+		ctx.moveTo(cx, cy);
 
-    const pts: [number, number][] = [[cx, cy]];
-    let curAngle = angle;
-    for (let i = 0; i < steps; i++) {
-      curAngle += (Math.sin(i * 4.7 + depth * 2.3) - 0.5) * 0.85;
-      cx += Math.cos(curAngle) * stepLen;
-      cy += Math.sin(curAngle) * stepLen;
-      pts.push([cx, cy]);
-      ctx.lineTo(cx, cy);
-    }
-    ctx.stroke();
+		const pts: [number, number][] = [[cx, cy]];
+		let curAngle = angle;
+		for (let i = 0; i < steps; i++) {
+			curAngle += (Math.sin(i * 4.7 + depth * 2.3) - 0.5) * 0.85;
+			cx += Math.cos(curAngle) * stepLen;
+			cy += Math.sin(curAngle) * stepLen;
+			pts.push([cx, cy]);
+			ctx.lineTo(cx, cy);
+		}
+		ctx.stroke();
 
-    // Inner white-hot core
-    ctx.strokeStyle = '#fde047';
-    ctx.lineWidth = depth * 1.1;
-    ctx.beginPath();
-    ctx.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) {
-      ctx.lineTo(pts[i][0], pts[i][1]);
-    }
-    ctx.stroke();
+		// Inner white-hot core
+		ctx.strokeStyle = "#fde047";
+		ctx.lineWidth = depth * 1.1;
+		ctx.beginPath();
+		ctx.moveTo(pts[0][0], pts[0][1]);
+		for (let i = 1; i < pts.length; i++) {
+			ctx.lineTo(pts[i][0], pts[i][1]);
+		}
+		ctx.stroke();
 
-    // Fork sub-cracks
-    const mid = pts[Math.floor(pts.length * 0.55)];
-    drawCrackBranch(mid[0], mid[1], angle + 0.65, length * 0.62, depth - 1);
-    drawCrackBranch(cx, cy, angle - 0.52, length * 0.55, depth - 1);
-  };
+		// Fork sub-cracks
+		const mid = pts[Math.floor(pts.length * 0.55)];
+		drawCrackBranch(mid[0], mid[1], angle + 0.65, length * 0.62, depth - 1);
+		drawCrackBranch(cx, cy, angle - 0.52, length * 0.55, depth - 1);
+	};
 
-  drawCrackBranch(32, 48, 0.45, 120, 3);
-  drawCrackBranch(210, 60, 2.4, 115, 3);
-  drawCrackBranch(64, 195, -0.55, 125, 3);
-  drawCrackBranch(185, 210, -2.2, 110, 3);
-  drawCrackBranch(128, 25, 1.5, 140, 3);
+	drawCrackBranch(32, 48, 0.45, 120, 3);
+	drawCrackBranch(210, 60, 2.4, 115, 3);
+	drawCrackBranch(64, 195, -0.55, 125, 3);
+	drawCrackBranch(185, 210, -2.2, 110, 3);
+	drawCrackBranch(128, 25, 1.5, 140, 3);
 
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.needsUpdate = true;
-  _sharedArmorScarTex = tex;
-  return tex;
+	const tex = new THREE.CanvasTexture(canvas);
+	tex.wrapS = THREE.RepeatWrapping;
+	tex.wrapT = THREE.RepeatWrapping;
+	tex.needsUpdate = true;
+	_sharedArmorScarTex = tex;
+	return tex;
 }
