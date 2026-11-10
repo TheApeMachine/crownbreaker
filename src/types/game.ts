@@ -421,6 +421,10 @@ export interface AcademicColloquiumState {
 	reviewer2RivalryLevel: number;
 	journalRejections: number; // 0, 1, 2, 3 rejections from Journal of Transfinite Causality
 	equipmentSoldForFee: boolean;
+	/** Diegetic Perseus flyer on Room 4B floor — free-roam panel, not a stage swap */
+	perseusOfferOpen: boolean;
+	/** Acceptance letter on the desk — free-roam panel after fee is paid */
+	acceptanceLetterOpen: boolean;
 	coffeeMachineKickCount: number;
 	selectedEmailId: string;
 	inbox: AcademicEmailItem[];

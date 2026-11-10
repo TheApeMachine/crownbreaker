@@ -98,6 +98,13 @@ export type MultiverseSimRef = {
 	imminentParadoxWarning: boolean;
 	cameraShake: number;
 	academicColloquium: AcademicColloquiumState | null;
+	uniPlayer: {
+		worldX: number;
+		worldZ: number;
+		yaw: number;
+		targetX: number | null;
+		targetZ: number | null;
+	};
 	pieceRigs: Map<string, ArticulatedPieceRig>;
 	arenaRig: BoardArenaRig | null;
 	pocketWatchRig: MultiversalPocketWatchRig | null;
@@ -1062,27 +1069,29 @@ export function useMultiverseActions({
 						setPieceProfessorMode(r, true, p.faction);
 					}
 				}
+				sim.uniPlayer.worldX = -10.0;
+				sim.uniPlayer.worldZ = -3.2;
+				sim.uniPlayer.yaw = 0;
+				sim.uniPlayer.targetX = null;
+				sim.uniPlayer.targetZ = null;
 				setPhase("ACADEMIC_SIMULATOR");
 				setAcademicColloquium({ ...colState });
+				// No watch banner — rain, Room 4B, and the dead coffee machine are the welcome.
+			} else {
+				setWatchEventBanner({
+					title: `✦ MULTIVERSAL SYNOD RESONANCE (×${res.newSynodStacks})`,
+					subtitle: `${ARCHETYPES[sel.type].chessName} transposed with its ${res.counterpartBranch.shortCode} self → ${sq} (+25 HP, +30% Meter & Synod L-Leaps Unlocked)!`,
+				});
 			}
-
-			setWatchEventBanner({
-				title: sel.isSentientTheorem
-					? `🌧️ REALITY COLLAPSE — WELCOME TO THE UNIVERSITY OF GREATER ANDROMEDA`
-					: `✦ MULTIVERSAL SYNOD RESONANCE (×${res.newSynodStacks})`,
-				subtitle: sel.isSentientTheorem
-					? `The chessboard is gone. You are now Dr. Pawn, an untenured researcher at the University of Greater Andromeda.`
-					: `${ARCHETYPES[sel.type].chessName} transposed with its ${res.counterpartBranch.shortCode} self → ${sq} (+25 HP, +30% Meter & Synod L-Leaps Unlocked)!`,
-			});
 			setBattleLogs((prev) => [
 				{
 					id: `synod_${Date.now()}`,
 					turnNumber: sim.turnNumber,
 					summary: sel.isSentientTheorem
-						? `🌧️ The Chess Universe Dissolved: Entered the University of Greater Andromeda as Dr. Pawn`
+						? `Entered Room 4B, Peano Hall as Dr. Pawn`
 						: `Multiversal Synod (×${res.newSynodStacks}): ${ARCHETYPES[sel.type].chessName} Transposed via ${res.counterpartBranch.shortCode} → ${sq}!`,
 					detail: sel.isSentientTheorem
-						? `Room 4B, Peano Hall. Rain against the windows. A coffee machine that hasn't worked since 1987. Six years of academic struggle begin.`
+						? `Chess universe collapsed into the University of Greater Andromeda life-sim.`
 						: `Fused parallel-universe resonance with ${res.counterpartBranch.name} (+25 HP, +30% Meter, Synod L-Leaps & Triad Combat Strikes).`,
 					wasUpset: false,
 					winnerFaction: sel.faction,

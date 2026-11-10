@@ -11,7 +11,6 @@ import {
 	appendPerseusArmColleagueEmail,
 	computeChshS,
 	DAY_NAMES_LIST,
-	executeForcedAnniversaryWalkHome,
 	formatSimClock,
 	recomputeProofIntegrity,
 	recordDepartmentalTransaction,
@@ -19,6 +18,7 @@ import {
 	recordPersonalTransaction,
 	syncAppointmentsWithClock,
 	triggerCafeteriaCollisionSpill,
+	tryResolveAnniversaryCollapse,
 } from "../academic/colloquiumSimHelpers";
 import { soundEngine } from "../audio/soundEngine";
 import {
@@ -122,12 +122,32 @@ export function useAcademicColloquiumActions({
 		if (!col?.active) return;
 
 		col.stage = "UNIVERSITY_SIMULATOR";
+		col.currentRoom = "OFFICE_4B";
 		sim.uniPlayer.worldX = -10.0;
 		sim.uniPlayer.worldZ = -3.2;
 		sim.uniPlayer.yaw = 0;
 		sim.uniPlayer.targetX = null;
 		sim.uniPlayer.targetZ = null;
 		soundEngine.playOfficeKeyboardClack();
+		setAcademicColloquium({ ...col });
+	}, []);
+
+	const handleClosePerseusOffer = useCallback(() => {
+		const sim = simRef.current;
+		const col = sim.academicColloquium;
+		if (!col?.active) return;
+		col.perseusOfferOpen = false;
+		col.stage = "UNIVERSITY_SIMULATOR";
+		setAcademicColloquium({ ...col });
+	}, []);
+
+	const handleOpenPerseusOffer = useCallback(() => {
+		const sim = simRef.current;
+		const col = sim.academicColloquium;
+		if (!col?.active || col.journalRejections < 3) return;
+		col.perseusOfferOpen = true;
+		col.stage = "UNIVERSITY_SIMULATOR";
+		col.activeDrawerTab = "NONE";
 		setAcademicColloquium({ ...col });
 	}, []);
 
@@ -138,7 +158,7 @@ export function useAcademicColloquiumActions({
 
 		if (roomId === "PAWN_HOUSE" && col.homeAccess === "LOCKED_OUT") {
 			col.colloquiumLog = [
-				`🔒 [${formatSimClock(col.timeOfDayMinutes)}] 742 Retrocausal Terrace — porch light off. Keys no longer work. Arthur Vance said not to approach the property.`,
+				`🔒 [${formatSimClock(col.timeOfDayMinutes)}] 742 Retrocausal Terrace — porch light off. Keys no longer work.`,
 				...col.colloquiumLog.slice(0, 9),
 			];
 			soundEngine.playRejectionStamp();
@@ -146,43 +166,31 @@ export function useAcademicColloquiumActions({
 			return;
 		}
 
-		// Anniversary evening after croissant: Crosstown Bus is either unaffordable or emotionally impossible
-		if (
-			roomId === "PAWN_HOUSE" &&
-			col.tobyCroissantPurchased &&
-			col.domesticArcStage === "CROISSANT_BOUGHT" &&
-			col.timeOfDayMinutes >= 17 * 60 + 15
-		) {
-			executeForcedAnniversaryWalkHome(col, sim);
-			setAcademicColloquium({ ...col });
-			return;
-		}
-
 		const dest = UNIVERSITY_ROOM_CENTERS[roomId];
-		// If leaving Cafeteria while carrying hot coffee for the first time, the distracted student in the doorway collides with Dr. Pawn!
+
+		// Spill resolves in place — never snap the avatar for narrative convenience.
 		if (
 			col.currentRoom === "CAFETERIA" &&
 			roomId !== "CAFETERIA" &&
 			col.carryingHotCoffee &&
 			!col.coffeeSpillIncidentTriggered
 		) {
-			sim.uniPlayer.worldX = 9.2;
-			sim.uniPlayer.worldZ = -1.5;
-			advanceSimMinutes(col, 4);
 			triggerCafeteriaCollisionSpill(col, sim);
-			col.currentRoom = roomId;
-			sim.uniPlayer.targetX = dest.x;
-			sim.uniPlayer.targetZ = dest.z;
-			setAcademicColloquium({ ...col });
-			return;
 		}
 
 		col.cafeteriaQueuePosition = null;
 		col.cafeteriaServiceProgress = 0;
-		col.currentRoom = roomId;
 		sim.uniPlayer.targetX = dest.x;
 		sim.uniPlayer.targetZ = dest.z;
-		advanceSimMinutes(col, 4, `Walked to ${dest.label}`);
+		if (
+			col.tobyCroissantPurchased &&
+			col.domesticArcStage === "CROISSANT_BOUGHT" &&
+			roomId === "PAWN_HOUSE"
+		) {
+			col.domesticArcStage = "ANNIVERSARY_WALK";
+			col.anniversaryWalkForced = true;
+		}
+		// Never rewrite currentRoom here — getRoomAtWorldPos owns it while you walk.
 		soundEngine.playOfficeKeyboardClack();
 		setAcademicColloquium({ ...col });
 	}, []);
@@ -195,21 +203,6 @@ export function useAcademicColloquiumActions({
 		if (col.stationWagonSeizedBySpouse) {
 			col.colloquiumLog = [
 				`🚗 [${formatSimClock(col.timeOfDayMinutes)}] The 1984 Burgundy Station Wagon is gone. Court worksheets list Blue Book $450 — assigned to spouse.`,
-				...col.colloquiumLog.slice(0, 9),
-			];
-			soundEngine.playRejectionStamp();
-			setAcademicColloquium({ ...col });
-			return;
-		}
-
-		if (
-			col.tobyCroissantPurchased &&
-			col.domesticArcStage === "CROISSANT_BOUGHT" &&
-			col.timeOfDayMinutes >= 17 * 60 + 15 &&
-			!sim.uniCar.isDriving
-		) {
-			col.colloquiumLog = [
-				`🚗 [${formatSimClock(col.timeOfDayMinutes)}] You reach for the wagon keys — then remember Toby's croissant and the candle waiting at home. Walk.`,
 				...col.colloquiumLog.slice(0, 9),
 			];
 			soundEngine.playRejectionStamp();
@@ -231,29 +224,25 @@ export function useAcademicColloquiumActions({
 			];
 			soundEngine.playOfficeKeyboardClack();
 		} else {
-			// Enter car & drive
 			const dist = Math.hypot(
 				sim.uniPlayer.worldX - sim.uniCar.worldX,
 				sim.uniPlayer.worldZ - sim.uniCar.worldZ,
 			);
-			if (
-				dist > 15.0 &&
-				col.currentRoom !== "CAMPUS_QUAD" &&
-				col.currentRoom !== "CITY_STREETS"
-			) {
+			if (dist > 6.0) {
 				col.colloquiumLog = [
-					`🚗 [${formatSimClock(col.timeOfDayMinutes)}] Walked out to your 1984 Burgundy Station Wagon in the South Lot. Engine turns over with a familiar rumble.`,
+					`🚗 [${formatSimClock(col.timeOfDayMinutes)}] The wagon is in the South Lot. Walk out to it first.`,
 					...col.colloquiumLog.slice(0, 9),
 				];
-				sim.uniPlayer.worldX = sim.uniCar.worldX;
-				sim.uniPlayer.worldZ = sim.uniCar.worldZ;
-				col.currentRoom = "CAMPUS_QUAD";
-			} else {
-				col.colloquiumLog = [
-					`🚗 [${formatSimClock(col.timeOfDayMinutes)}] Turned the key in your 1984 Station Wagon. Headlights illuminate the road ahead! Use WASD to steer & drive.`,
-					...col.colloquiumLog.slice(0, 9),
-				];
+				sim.uniPlayer.targetX = sim.uniCar.worldX;
+				sim.uniPlayer.targetZ = sim.uniCar.worldZ;
+				soundEngine.playRejectionStamp();
+				setAcademicColloquium({ ...col });
+				return;
 			}
+			col.colloquiumLog = [
+				`🚗 [${formatSimClock(col.timeOfDayMinutes)}] Key turns. WASD to drive.`,
+				...col.colloquiumLog.slice(0, 9),
+			];
 			sim.uniCar.isDriving = true;
 			col.isDrivingCar = true;
 			soundEngine.playOfficeKeyboardClack();
@@ -265,6 +254,21 @@ export function useAcademicColloquiumActions({
 		const sim = simRef.current;
 		const col = sim.academicColloquium;
 		if (!col?.active) return;
+
+		const nearStation = TRAM_STATIONS.some(
+			(st) =>
+				Math.hypot(sim.uniPlayer.worldX - st.x, sim.uniPlayer.worldZ - st.z) <
+				14,
+		);
+		if (!nearStation) {
+			col.colloquiumLog = [
+				`🚈 [${formatSimClock(col.timeOfDayMinutes)}] No faregate here — walk to a GAMTA platform first.`,
+				...col.colloquiumLog.slice(0, 9),
+			];
+			soundEngine.playRejectionStamp();
+			setAcademicColloquium({ ...col });
+			return;
+		}
 
 		col.tramTransitModalOpen = true;
 		soundEngine.playTramChime();
@@ -299,17 +303,6 @@ export function useAcademicColloquiumActions({
 			return;
 		}
 
-		if (
-			col.tobyCroissantPurchased &&
-			col.domesticArcStage === "CROISSANT_BOUGHT" &&
-			col.timeOfDayMinutes >= 17 * 60 + 15 &&
-			(stationId === "KEPLER_SUBURBS" || st.shortLabel.includes("Home"))
-		) {
-			executeForcedAnniversaryWalkHome(col, sim);
-			setAcademicColloquium({ ...col });
-			return;
-		}
-
 		recordPersonalTransaction(
 			col,
 			`GAMTA Metro Transit — Retrocausal Line 1 to ${st.name}`,
@@ -322,11 +315,11 @@ export function useAcademicColloquiumActions({
 			7,
 			`Rode GAMTA Retrocausal Tram to ${st.shortLabel}`,
 		);
-		col.energyLevel = Math.min(100, col.energyLevel + 6); // Relaxing commute reading preprints!
+		col.energyLevel = Math.min(100, col.energyLevel + 6);
 		col.tramTransitModalOpen = false;
 		col.isRidingTram = false;
 
-		// Relocate player to station platform
+		// Relocate player to station platform — then they walk the last block on foot.
 		sim.uniPlayer.worldX =
 			st.x + Math.sin(st.platformAngle + Math.PI / 2) * 2.8;
 		sim.uniPlayer.worldZ =
@@ -339,7 +332,16 @@ export function useAcademicColloquiumActions({
 		} else if (stationId === "DOWNTOWN_PERSEUS") {
 			col.currentRoom = "DRY_CLEANER";
 		} else if (stationId === "KEPLER_SUBURBS") {
-			col.currentRoom = "PAWN_HOUSE";
+			col.currentRoom = "CITY_STREETS";
+			if (
+				col.tobyCroissantPurchased &&
+				(col.domesticArcStage === "CROISSANT_BOUGHT" ||
+					col.domesticArcStage === "ANNIVERSARY_WALK")
+			) {
+				col.domesticArcStage = "ANNIVERSARY_WALK";
+				sim.uniPlayer.targetX = UNIVERSITY_ROOM_CENTERS.PAWN_HOUSE.x;
+				sim.uniPlayer.targetZ = UNIVERSITY_ROOM_CENTERS.PAWN_HOUSE.z;
+			}
 		} else {
 			col.currentRoom = "CAMPUS_QUAD";
 		}
@@ -349,7 +351,7 @@ export function useAcademicColloquiumActions({
 		soundEngine.playTramMotorHum();
 
 		col.colloquiumLog = [
-			`🚈 [${formatSimClock(col.timeOfDayMinutes)}] GAMTA RETROCAUSAL LINE 1: Arrived at ${st.name} (-$1.75 fare). The 7-minute express trip gave you a few peaceful moments to review Lemma 3.2 (+6 Energy)!`,
+			`🚈 [${formatSimClock(col.timeOfDayMinutes)}] GAMTA Line 1 → ${st.name} (−$1.75).`,
 			...col.colloquiumLog.slice(0, 9),
 		];
 
@@ -410,7 +412,7 @@ export function useAcademicColloquiumActions({
 		if (!col?.active) return;
 
 		col.coffeeMachineKickCount += 1;
-		advanceSimMinutes(col, 5);
+
 		sim.cameraShake = 0.14;
 		soundEngine.playBrokenCoffeeMachineSputter();
 
@@ -439,15 +441,23 @@ export function useAcademicColloquiumActions({
 				...col.colloquiumLog.slice(0, 9),
 			];
 		} else {
-			col.currentRoom = "CAFETERIA";
+			if (col.currentRoom !== "CAFETERIA") {
+				col.colloquiumLog = [
+					`☕ [${formatSimClock(col.timeOfDayMinutes)}] The coffee queue is in the cafeteria — walk there first.`,
+					...col.colloquiumLog.slice(0, 9),
+				];
+				sim.uniPlayer.targetX = UNIVERSITY_ROOM_CENTERS.CAFETERIA.x;
+				sim.uniPlayer.targetZ = UNIVERSITY_ROOM_CENTERS.CAFETERIA.z;
+				soundEngine.playRejectionStamp();
+				setAcademicColloquium({ ...col });
+				return;
+			}
 			col.cafeteriaQueuePosition = 3;
 			col.cafeteriaServiceProgress = 0;
-			sim.uniPlayer.worldX = 8.0;
-			sim.uniPlayer.worldZ = -4.3;
-			sim.uniPlayer.targetX = null;
-			sim.uniPlayer.targetZ = null;
+			sim.uniPlayer.targetX = 11.4 - 3 * 1.25;
+			sim.uniPlayer.targetZ = -3.2;
 			col.colloquiumLog = [
-				`☕ [${formatSimClock(col.timeOfDayMinutes)}] Joined the physical coffee queue at Lagrange Point Cafeteria behind 3 patrons. Wait in line for the cashier, or step out anytime.`,
+				`☕ [${formatSimClock(col.timeOfDayMinutes)}] Joined the coffee queue behind 3 patrons.`,
 				...col.colloquiumLog.slice(0, 9),
 			];
 		}
@@ -460,6 +470,18 @@ export function useAcademicColloquiumActions({
 			const sim = simRef.current;
 			const col = sim.academicColloquium;
 			if (!col?.active || col.shirtState !== "COFFEE_STAINED") return;
+
+			if (col.currentRoom !== "DRY_CLEANER") {
+				col.colloquiumLog = [
+					`🧼 [${formatSimClock(col.timeOfDayMinutes)}] Perseus Dry Cleaners is downtown. Walk or drive there.`,
+					...col.colloquiumLog.slice(0, 9),
+				];
+				sim.uniPlayer.targetX = UNIVERSITY_ROOM_CENTERS.DRY_CLEANER.x;
+				sim.uniPlayer.targetZ = UNIVERSITY_ROOM_CENTERS.DRY_CLEANER.z;
+				soundEngine.playRejectionStamp();
+				setAcademicColloquium({ ...col });
+				return;
+			}
 
 			const mins = col.timeOfDayMinutes;
 			const cleanerIsOpen = mins >= 510 && mins <= 1050;
@@ -484,7 +506,6 @@ export function useAcademicColloquiumActions({
 				return;
 			}
 
-			advanceSimMinutes(col, 6);
 			recordPersonalTransaction(
 				col,
 				`Perseus Dry Cleaners — ${service === "EXPRESS_75_MIN" ? "1-Hr Express Stain Removal" : "Standard Next-Day Press"} (#PDC-108)`,
@@ -559,11 +580,22 @@ export function useAcademicColloquiumActions({
 			return;
 		}
 
-		advanceSimMinutes(col, 5);
+		if (col.currentRoom !== "DRY_CLEANER") {
+			col.colloquiumLog = [
+				`🧼 [${formatSimClock(col.timeOfDayMinutes)}] Your ticket is at Perseus Dry Cleaners downtown.`,
+				...col.colloquiumLog.slice(0, 9),
+			];
+			sim.uniPlayer.targetX = UNIVERSITY_ROOM_CENTERS.DRY_CLEANER.x;
+			sim.uniPlayer.targetZ = UNIVERSITY_ROOM_CENTERS.DRY_CLEANER.z;
+			soundEngine.playRejectionStamp();
+			setAcademicColloquium({ ...col });
+			return;
+		}
+
 		t.collected = true;
 		col.shirtState = "CLEAN";
 		col.colloquiumLog = [
-			`✨ [${formatSimClock(col.timeOfDayMinutes)}] Collected your freshly pressed, spotless Oxford dress shirt (Ticket #${t.ticketNumber}) from Perseus Dry Cleaners!`,
+			`✨ [${formatSimClock(col.timeOfDayMinutes)}] Collected Ticket #${t.ticketNumber} — spotless Oxford.`,
 			...col.colloquiumLog.slice(0, 9),
 		];
 		soundEngine.playSynodResonance(false);
@@ -574,6 +606,18 @@ export function useAcademicColloquiumActions({
 		const sim = simRef.current;
 		const col = sim.academicColloquium;
 		if (!col?.active) return;
+
+		if (col.currentRoom !== "DRY_CLEANER") {
+			col.colloquiumLog = [
+				`👔 [${formatSimClock(col.timeOfDayMinutes)}] Haberdashery is downtown next to the cleaners.`,
+				...col.colloquiumLog.slice(0, 9),
+			];
+			sim.uniPlayer.targetX = UNIVERSITY_ROOM_CENTERS.DRY_CLEANER.x;
+			sim.uniPlayer.targetZ = UNIVERSITY_ROOM_CENTERS.DRY_CLEANER.z;
+			soundEngine.playRejectionStamp();
+			setAcademicColloquium({ ...col });
+			return;
+		}
 
 		const mins = col.timeOfDayMinutes;
 		if (mins < 510 || mins > 1050) {
@@ -596,7 +640,6 @@ export function useAcademicColloquiumActions({
 			return;
 		}
 
-		advanceSimMinutes(col, 10);
 		recordPersonalTransaction(
 			col,
 			"Perseus Haberdashery — Brand-New Crisp Oxford Dress Shirt",
@@ -617,30 +660,27 @@ export function useAcademicColloquiumActions({
 		const col = sim.academicColloquium;
 		if (!col?.active || !col.hasSpareCleanShirtAtHome) return;
 
-		if (col.checkingBalance < 5.5) {
+		// Wardrobe only works when you are physically home — no bus cutscene.
+		if (col.currentRoom !== "PAWN_HOUSE" || col.homeAccess === "LOCKED_OUT") {
 			col.colloquiumLog = [
-				`🚌 [${formatSimClock(col.timeOfDayMinutes)}] You don't even have $5.50 in checking for round-trip Crosstown Bus fare!`,
+				`👔 [${formatSimClock(col.timeOfDayMinutes)}] Spare shirt is in the wardrobe at 742 Retrocausal Terrace. Get yourself there.`,
 				...col.colloquiumLog.slice(0, 9),
 			];
+			if (col.homeAccess !== "LOCKED_OUT") {
+				sim.uniPlayer.targetX = UNIVERSITY_ROOM_CENTERS.PAWN_HOUSE.x;
+				sim.uniPlayer.targetZ = UNIVERSITY_ROOM_CENTERS.PAWN_HOUSE.z;
+			}
 			soundEngine.playRejectionStamp();
 			setAcademicColloquium({ ...col });
 			return;
 		}
 
-		recordPersonalTransaction(
-			col,
-			"Andromeda Crosstown Transit — Round-Trip Bus Fare to Apartment",
-			"TRANSIT",
-			-5.5,
-		);
-		advanceSimMinutes(
-			col,
-			95,
-			"Took 95-minute round-trip bus commute home to change into spare shirt",
-		);
 		col.hasSpareCleanShirtAtHome = false;
 		col.shirtState = "CLEAN";
-		col.energyLevel = Math.max(15, col.energyLevel - 16);
+		col.colloquiumLog = [
+			`👔 [${formatSimClock(col.timeOfDayMinutes)}] Changed into the spare Oxford in the bedroom wardrobe.`,
+			...col.colloquiumLog.slice(0, 9),
+		];
 		soundEngine.playOfficeKeyboardClack();
 		setAcademicColloquium({ ...col });
 	}, []);
@@ -680,7 +720,6 @@ export function useAcademicColloquiumActions({
 			return;
 		}
 
-		advanceSimMinutes(col, 8);
 		recordPersonalTransaction(
 			col,
 			"Lagrange Point Cafeteria — Artisanal Almond Croissant (for Toby)",
@@ -708,24 +747,8 @@ export function useAcademicColloquiumActions({
 		const col = sim.academicColloquium;
 		if (!col?.active) return;
 		col.anniversaryArrivalModalOpen = false;
-		// Immediately locked out — return to 4B with the note burned into memory
-		col.currentRoom = "OFFICE_4B";
-		const office = UNIVERSITY_ROOM_CENTERS.OFFICE_4B;
-		sim.uniPlayer.worldX = office.x;
-		sim.uniPlayer.worldZ = office.z;
-		col.colloquiumLog = [
-			`🚶 [${formatSimClock(col.timeOfDayMinutes)}] Keys no longer work. You walk back to Peano Hall in the same soaked shoes. Room 4B will be home now.`,
-			...col.colloquiumLog.slice(0, 9),
-		];
+		// Stay on the porch. Walk yourself wherever you go next.
 		soundEngine.playOfficeKeyboardClack();
-		setAcademicColloquium({ ...col });
-	}, []);
-
-	const handleForcedAnniversaryWalkHome = useCallback(() => {
-		const sim = simRef.current;
-		const col = sim.academicColloquium;
-		if (!col?.active) return;
-		executeForcedAnniversaryWalkHome(col, sim);
 		setAcademicColloquium({ ...col });
 	}, []);
 
@@ -734,7 +757,6 @@ export function useAcademicColloquiumActions({
 		const col = sim.academicColloquium;
 		if (!col?.active || !col.legalTabUnlocked) return;
 
-		advanceSimMinutes(col, 6);
 		recordLegalDebt(
 			col,
 			"Vance & Assoc. — Telephone Conf. w/ Client (0.1 hr @ $260/hr)",
@@ -753,7 +775,6 @@ export function useAcademicColloquiumActions({
 		const col = sim.academicColloquium;
 		if (!col?.active || !col.legalTabUnlocked) return;
 
-		advanceSimMinutes(col, 6);
 		recordLegalDebt(
 			col,
 			"Vance & Assoc. — Receipt/Review of Wife's Email (0.1 hr)",
@@ -793,7 +814,6 @@ export function useAcademicColloquiumActions({
 				col.maritalAssetGrid.manuscriptAppraisedValue = 0;
 			}
 
-			advanceSimMinutes(col, 12);
 			recordLegalDebt(
 				col,
 				"Vance & Assoc. — Asset Allocation Worksheet Review (0.2 hr)",
@@ -830,12 +850,7 @@ export function useAcademicColloquiumActions({
 			col.stationWagonSeizedBySpouse = true;
 		}
 		col.domesticArcStage = "SEPARATED";
-		advanceSimMinutes(col, 30);
-		recordLegalDebt(
-			col,
-			"Vance & Assoc. — Settlement Worksheet Filing (0.5 hr)",
-			130,
-		);
+		recordLegalDebt(col, "Vance & Assoc. — Settlement Worksheet Filing", 130);
 		col.colloquiumLog = [
 			`⚖️ [${formatSimClock(col.timeOfDayMinutes)}] Settlement worksheet filed. Condo: ${g.condoAssignedTo}. Wagon: ${g.wagonAssignedTo}. Manuscript IP: $0.00 (Exhibit D).`,
 			...col.colloquiumLog.slice(0, 9),
@@ -857,17 +872,22 @@ export function useAcademicColloquiumActions({
 			setAcademicColloquium({ ...col });
 			return;
 		}
+		// Vance's strip-mall suite sits beside Perseus Dry Cleaners — be downtown.
+		if (
+			col.currentRoom !== "DRY_CLEANER" &&
+			col.currentRoom !== "CITY_STREETS"
+		) {
+			col.colloquiumLog = [
+				`⚖️ [${formatSimClock(col.timeOfDayMinutes)}] Vance & Assoc. is downtown, wedged between the cleaners and a discount tire shop. Get there.`,
+				...col.colloquiumLog.slice(0, 9),
+			];
+			sim.uniPlayer.targetX = UNIVERSITY_ROOM_CENTERS.DRY_CLEANER.x;
+			sim.uniPlayer.targetZ = UNIVERSITY_ROOM_CENTERS.DRY_CLEANER.z;
+			soundEngine.playRejectionStamp();
+			setAcademicColloquium({ ...col });
+			return;
+		}
 		col.depositionModalOpen = true;
-		advanceSimMinutes(
-			col,
-			240,
-			"Four-hour settlement deposition at Vance & Assoc. strip-mall office",
-		);
-		recordLegalDebt(
-			col,
-			"Vance & Assoc. — Settlement Deposition (4.0 hr)",
-			1040,
-		);
 		soundEngine.playOfficeKeyboardClack();
 		setAcademicColloquium({ ...col });
 	}, []);
@@ -887,8 +907,8 @@ export function useAcademicColloquiumActions({
 		recomputeProofIntegrity(col);
 		recordLegalDebt(
 			col,
-			"Vance & Assoc. — Emotional Recess / Napkin (0.2 hr)",
-			52,
+			"Vance & Assoc. — Settlement Deposition + Recess (billed)",
+			1092,
 		);
 		col.colloquiumLog = [
 			`💔 [${formatSimClock(col.timeOfDayMinutes)}] Deposition epiphany: the marriage failed because a quantum state cannot obey three-party non-local correlation. Entanglement Swap unlocked.`,
@@ -926,7 +946,7 @@ export function useAcademicColloquiumActions({
 		);
 		col.hotPlateDinnerEatenTonight = true;
 		col.energyLevel = Math.min(100, col.energyLevel + 12);
-		advanceSimMinutes(col, 15);
+
 		col.colloquiumLog = [
 			`🍲 [${formatSimClock(col.timeOfDayMinutes)}] Heated a $0.89 can of condensed tomato soup on the electric hot plate beside the dead 1987 Bunn-O-Matic.`,
 			...col.colloquiumLog.slice(0, 9),
@@ -993,13 +1013,28 @@ export function useAcademicColloquiumActions({
 
 			if (col.currentRoom !== apt.locationRoom) {
 				const dest = UNIVERSITY_ROOM_CENTERS[apt.locationRoom];
-				col.currentRoom = apt.locationRoom;
-				sim.uniPlayer.worldX = dest.x;
-				sim.uniPlayer.worldZ = dest.z;
+				col.colloquiumLog = [
+					`📅 [${formatSimClock(col.timeOfDayMinutes)}] ${apt.title} is in ${dest.label.split(" · ")[0]}. Walk there.`,
+					...col.colloquiumLog.slice(0, 9),
+				];
+				sim.uniPlayer.targetX = dest.x;
+				sim.uniPlayer.targetZ = dest.z;
+				soundEngine.playRejectionStamp();
+				setAcademicColloquium({ ...col });
+				return;
 			}
 
-			col.timeOfDayMinutes =
-				Math.max(col.timeOfDayMinutes, apt.startMinutes) + 30;
+			const mins = col.timeOfDayMinutes;
+			if (mins < apt.startMinutes - 15 || mins > apt.endMinutes + 10) {
+				col.colloquiumLog = [
+					`📅 [${formatSimClock(mins)}] Wrong window for ${apt.title} (${formatSimClock(apt.startMinutes)}–${formatSimClock(apt.endMinutes)}).`,
+					...col.colloquiumLog.slice(0, 9),
+				];
+				soundEngine.playRejectionStamp();
+				setAcademicColloquium({ ...col });
+				return;
+			}
+
 			const stained = col.shirtState === "COFFEE_STAINED";
 			const sweater = col.shirtState === "AT_CLEANERS_WEARING_SWEATER";
 
@@ -1101,7 +1136,6 @@ export function useAcademicColloquiumActions({
 			const col = sim.academicColloquium;
 			if (!col?.active) return;
 
-			advanceSimMinutes(col, 10);
 			const stained = col.shirtState === "COFFEE_STAINED";
 
 			if (npcId === "TOBY") {
@@ -1198,7 +1232,6 @@ export function useAcademicColloquiumActions({
 			const col = sim.academicColloquium;
 			if (!col?.active) return;
 
-			advanceSimMinutes(col, 25);
 			col.proofWorkbench.boundaryGaugeChoice = gauge;
 			if (gauge === "CHIRAL_ANTIPERIODIC") {
 				col.proofWorkbench.boundaryGaugeVerified = true;
@@ -1227,7 +1260,6 @@ export function useAcademicColloquiumActions({
 		const col = sim.academicColloquium;
 		if (!col?.active) return;
 
-		advanceSimMinutes(col, 20);
 		col.proofWorkbench.jacobianSignFlipped =
 			!col.proofWorkbench.jacobianSignFlipped;
 		col.proofWorkbench.lastVerificationMessage = col.proofWorkbench
@@ -1264,10 +1296,22 @@ export function useAcademicColloquiumActions({
 			return;
 		}
 
-		advanceSimMinutes(col, 45);
+		if (
+			col.currentRoom !== "OFFICE_4B" &&
+			col.currentRoom !== "SEMINAR_ROOM_204"
+		) {
+			col.colloquiumLog = [
+				`🔬 [${formatSimClock(col.timeOfDayMinutes)}] Lab gear is keyed to Peano Hall. Be in 4B or Seminar 204 to run the interferometer.`,
+				...col.colloquiumLog.slice(0, 9),
+			];
+			soundEngine.playRejectionStamp();
+			setAcademicColloquium({ ...col });
+			return;
+		}
+
 		recordDepartmentalTransaction(
 			col,
-			"Chiral Interferometry Facility — 02:00 AM Liquid Helium & Mirror Calibration Run",
+			"Chiral Interferometry Facility — Liquid Helium & Mirror Calibration Run",
 			"LAB_EQUIPMENT",
 			-950,
 		);
@@ -1361,7 +1405,6 @@ export function useAcademicColloquiumActions({
 			return;
 		}
 
-		advanceSimMinutes(col, 30);
 		const totalDirect = selectedLines.reduce((acc, l) => acc + l.directCost, 0);
 		col.grantSubmittedAndApproved = true;
 		recordDepartmentalTransaction(
@@ -1412,7 +1455,6 @@ export function useAcademicColloquiumActions({
 			return;
 		}
 
-		advanceSimMinutes(col, 10);
 		recordPersonalTransaction(
 			col,
 			"Andromeda S&L — Monthly Faculty Condo Mortgage (#884-B)",
@@ -1448,6 +1490,16 @@ export function useAcademicColloquiumActions({
 			const col = sim.academicColloquium;
 			if (!col?.active) return;
 
+			// Never let UI skip the afternoon — clock runs while you play.
+			if (mins > 5) {
+				col.colloquiumLog = [
+					`⏱️ [${formatSimClock(col.timeOfDayMinutes)}] Time moves while you walk, wait, and work. No skipping ahead.`,
+					...col.colloquiumLog.slice(0, 9),
+				];
+				soundEngine.playRejectionStamp();
+				setAcademicColloquium({ ...col });
+				return;
+			}
 			advanceSimMinutes(col, mins, reason);
 			soundEngine.playOfficeKeyboardClack();
 			setAcademicColloquium({ ...col });
@@ -1460,15 +1512,10 @@ export function useAcademicColloquiumActions({
 		const col = sim.academicColloquium;
 		if (!col?.active) return;
 
-		// Anniversary night: croissant bought and still haven't walked home — force the collapse
-		if (
-			col.tobyCroissantPurchased &&
-			col.domesticArcStage === "CROISSANT_BOUGHT" &&
-			col.homeAccess === "OWNED"
-		) {
-			executeForcedAnniversaryWalkHome(col, sim);
+		// Slept through the night without going home — consequence, not a cutscene teleport.
+		if (tryResolveAnniversaryCollapse(col, { arrivedAtHouse: false })) {
 			setAcademicColloquium({ ...col });
-			return;
+			// Fall through into the normal morning so the day still advances.
 		}
 
 		syncAppointmentsWithClock(col, true);
@@ -1526,18 +1573,22 @@ export function useAcademicColloquiumActions({
 		col.carryingHotCoffee = false;
 		col.cafeteriaQueuePosition = null;
 		col.cafeteriaServiceProgress = 0;
-		col.currentRoom = "OFFICE_4B";
-		sim.uniPlayer.worldX = -10.0;
-		sim.uniPlayer.worldZ = -3.2;
 		sim.uniPlayer.targetX = null;
 		sim.uniPlayer.targetZ = null;
+		// Wake where you slept — no office teleport.
 
+		const place =
+			col.currentRoom === "PAWN_HOUSE"
+				? "742 Retrocausal Terrace"
+				: col.currentRoom === "OFFICE_4B" || col.livingInOffice4B
+					? "Room 4B"
+					: col.currentRoom;
 		const livingFlavor = col.livingInOffice4B
-			? ` Slept under the oak desk in a cheap blue sleeping bag. 07:30 communal restroom shave in the cracked mirror.${sleptHungry ? " Skipped hot-plate soup — energy 62." : ""}${col.legalTabUnlocked ? " LEGAL / MARITAL LEDGER is unlocked." : ""}`
+			? ` Sleeping bag under the oak desk.${sleptHungry ? " Skipped soup — energy 62." : ""}${col.legalTabUnlocked ? " LEGAL / MARITAL unlocked." : ""}`
 			: "";
 
 		col.colloquiumLog = [
-			`🌅 [${DAY_NAMES_LIST[col.dayIndex]} 08:30] Arrived at Room 4B, Peano Hall. Rain taps against the glass. Personal Checking: $${col.checkingBalance.toFixed(2)}.${livingFlavor}`,
+			`🌅 [${DAY_NAMES_LIST[col.dayIndex]} 08:30] Morning at ${place}. Checking $${col.checkingBalance.toFixed(2)}.${livingFlavor}`,
 			...col.colloquiumLog.slice(0, 9),
 		];
 		soundEngine.playOfficeKeyboardClack();
@@ -1549,20 +1600,22 @@ export function useAcademicColloquiumActions({
 		const col = sim.academicColloquium;
 		if (!col?.active) return;
 
+		if (col.currentRoom !== "OFFICE_4B") {
+			col.colloquiumLog = [
+				`📬 [${formatSimClock(col.timeOfDayMinutes)}] Manuscripts leave through Room 4B's faculty mail slot — be there.`,
+				...col.colloquiumLog.slice(0, 9),
+			];
+			sim.uniPlayer.targetX = UNIVERSITY_ROOM_CENTERS.OFFICE_4B.x;
+			sim.uniPlayer.targetZ = UNIVERSITY_ROOM_CENTERS.OFFICE_4B.z;
+			soundEngine.playRejectionStamp();
+			setAcademicColloquium({ ...col });
+			return;
+		}
+
 		const nextRejection = Math.min(3, col.journalRejections + 1);
 		col.journalRejections = nextRejection;
 		col.reviewer2RivalryLevel = Math.min(100, col.reviewer2RivalryLevel + 25);
-
-		if (nextRejection === 1) {
-			col.academicYear = Math.max(col.academicYear + 1, 2);
-			col.semester = "Spring";
-		} else if (nextRejection === 2) {
-			col.academicYear = Math.max(col.academicYear + 1, 4);
-			col.semester = "Fall";
-		} else {
-			col.academicYear = 6;
-			col.semester = "Spring";
-		}
+		// Career years advance by sleeping through them — never skip a career in one click.
 
 		const hermNote = col.proofWorkbench.hermitianBoundaryBalanced
 			? "The boundary self-adjoint extension is now formally correct"
@@ -1600,9 +1653,12 @@ export function useAcademicColloquiumActions({
 
 		if (nextRejection >= 3) {
 			appendPerseusArmColleagueEmail(col);
-			col.stage = "PERSEUS_ARM_OFFER";
+			// Stay in free-roam — flyer appears under the door; empty lab after sale shows the cost.
+			col.stage = "UNIVERSITY_SIMULATOR";
+			col.perseusOfferOpen = true;
+			col.activeDrawerTab = "NONE";
 			col.colloquiumLog = [
-				`🌌 Year 6: After your 3rd rejection from the Journal of Transfinite Causality, desperation sets in. Assoc. Prof. Knight whispers to you in the corridor about "GALACTIC ADVANCES IN THEORETICAL EVERYTHING" in the Perseus Arm...`,
+				`📄 A glossy flyer slid under Room 4B's door. Assoc. Prof. Knight nodded once in the corridor and kept walking.`,
 				...col.colloquiumLog.slice(0, 9),
 			];
 		}
@@ -1616,6 +1672,7 @@ export function useAcademicColloquiumActions({
 		if (!col?.active || col.equipmentSoldForFee) return;
 
 		col.equipmentSoldForFee = true;
+		col.stage = "UNIVERSITY_SIMULATOR";
 		recordPersonalTransaction(
 			col,
 			"Perseus Surplus Brokers — Sold Office Oscilloscope & Cryogenic Interferometer",
@@ -1623,7 +1680,7 @@ export function useAcademicColloquiumActions({
 			3500,
 		);
 		col.colloquiumLog = [
-			`📦 Sold your office oscilloscope and cryogenic interferometer (+$3,500 credited to Personal Checking) to cover the Perseus Arm publication fee.`,
+			`📦 Oscilloscope and cryo unit leave Room 4B on a hand truck. Checking +$3,500.`,
 			...col.colloquiumLog.slice(0, 9),
 		];
 		soundEngine.playSynodResonance(false);
@@ -1635,12 +1692,21 @@ export function useAcademicColloquiumActions({
 		const col = sim.academicColloquium;
 		if (!col?.active) return;
 
+		// Already paid — just reopen the letter on the desk without re-billing.
+		if (col.publishedDoi) {
+			col.stage = "UNIVERSITY_SIMULATOR";
+			col.acceptanceLetterOpen = true;
+			col.perseusOfferOpen = false;
+			setAcademicColloquium({ ...col });
+			return;
+		}
+
 		if (
 			col.domesticArcStage !== "DEPOSITION_DONE" &&
 			col.domesticArcStage !== "RUINED_BUT_PUBLISHED"
 		) {
 			col.colloquiumLog = [
-				`🌌 [${formatSimClock(col.timeOfDayMinutes)}] The Perseus Arm publisher will take your money — but the theorem is incomplete until the deposition's monogamy insight is in the manuscript. Attend the settlement deposition first.`,
+				`📜 [${formatSimClock(col.timeOfDayMinutes)}] Napkin math still missing — finish the settlement deposition before wiring the fee.`,
 				...col.colloquiumLog.slice(0, 9),
 			];
 			soundEngine.playRejectionStamp();
@@ -1657,7 +1723,9 @@ export function useAcademicColloquiumActions({
 			"PUBLICATION_FEE",
 			-3500,
 		);
-		col.stage = "ACCEPTANCE_LETTER";
+		col.stage = "UNIVERSITY_SIMULATOR";
+		col.perseusOfferOpen = false;
+		col.acceptanceLetterOpen = true;
 		col.domesticArcStage = "RUINED_BUT_PUBLISHED";
 		col.publishedDoi = `10.8473/gate.perseus.2032.8473`;
 		soundEngine.playSynodResonance(true);
@@ -1669,14 +1737,9 @@ export function useAcademicColloquiumActions({
 		const col = sim.academicColloquium;
 		if (!col?.active) return;
 
+		col.acceptanceLetterOpen = false;
 		col.stage = "REALITY_SHATTER_TRANSITION";
 		col.realityShatterProgressSec = 0.05;
-		col.colloquiumLog = [
-			"🔥 Divorce papers on the desk catch celestial cyan flame.",
-			"⚖️ Vance & Associates bills unfold into orbiting golden rune-glyphs.",
-			"🍲 The 1987 coffee machine, sleeping bag, and tomato soup cans dissolve into pure 4D quantum geometry.",
-			...col.colloquiumLog.slice(0, 7),
-		];
 		soundEngine.playWatchDoomBell(false);
 		soundEngine.playSynodResonance(true);
 		setAcademicColloquium({ ...col });
@@ -1832,6 +1895,8 @@ export function useAcademicColloquiumActions({
 
 	return {
 		handleEnterUniversityOffice,
+		handleClosePerseusOffer,
+		handleOpenPerseusOffer,
 		handleWalkToRoom,
 		handleToggleDriveCar,
 		handleOpenTransitModal,
@@ -1847,7 +1912,6 @@ export function useAcademicColloquiumActions({
 		handleCommuteHomeForSpareShirt,
 		handleBuyTobyCroissant,
 		handleDismissAnniversaryArrival,
-		handleForcedAnniversaryWalkHome,
 		handleVancePhoneConsult,
 		handleVanceReviewEmail,
 		handleAssignMaritalAsset,

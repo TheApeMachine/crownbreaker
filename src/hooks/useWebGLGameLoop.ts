@@ -19,6 +19,7 @@ import {
 	recordPersonalTransaction,
 	syncAppointmentsWithClock,
 	triggerCafeteriaCollisionSpill,
+	tryResolveAnniversaryCollapse,
 } from "../academic/colloquiumSimHelpers";
 import { soundEngine } from "../audio/soundEngine";
 import { ARCHETYPES } from "../data/archetypes";
@@ -1138,14 +1139,13 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 				const up = sim.uniPlayer;
 
 				// 1. REAL-TIME WASD / ARROW-KEY / CLICK NAVIGATION & CONTINUOUS UNIVERSITY CLOCK
+				// Drawers never freeze the body — only fullscreen story stages do.
 				if (col.stage === "UNIVERSITY_SIMULATOR") {
-					if (col.activeDrawerTab === "NONE") {
-						col.timeOfDayMinutes = Math.min(
-							22 * 60 + 30,
-							col.timeOfDayMinutes + rawDelta * 1.6,
-						);
-						syncAppointmentsWithClock(col, false);
-					}
+					col.timeOfDayMinutes = Math.min(
+						22 * 60 + 30,
+						col.timeOfDayMinutes + rawDelta * 1.6,
+					);
+					syncAppointmentsWithClock(col, false);
 
 					// Step Live Cafeteria Coffee Queue (Finite Cashier Service Rate!)
 					if (
@@ -1211,7 +1211,7 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 								hudSyncAccumulator = 1.0;
 							}
 						}
-					} else if (col.activeDrawerTab === "NONE") {
+					} else {
 						if (sim.uniCar.isDriving) {
 							// 1a. DRIVING DR. PAWN'S 1984 STATION WAGON ACROSS OPEN-WORLD CITY ROADS
 							let throttle = 0;
@@ -1280,8 +1280,21 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 								sim.uniCar.worldZ,
 							);
 							if (detectedRoom !== col.currentRoom) {
+								const prevRoom = col.currentRoom;
 								col.currentRoom = detectedRoom;
 								hudSyncAccumulator = 1.0;
+								if (
+									detectedRoom === "PAWN_HOUSE" &&
+									prevRoom !== "PAWN_HOUSE" &&
+									tryResolveAnniversaryCollapse(col, {
+										arrivedAtHouse: true,
+									})
+								) {
+									sim.uniCar.isDriving = false;
+									sim.uniCar.speed = 0;
+									col.isDrivingCar = false;
+									col.carSpeedMph = 0;
+								}
 							}
 						} else {
 							// 1b. WALKING ON FOOT (Camera-Relative WASD / Arrow Keys or Click Steering)
@@ -1338,8 +1351,17 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 
 								const detectedRoom = getRoomAtWorldPos(up.worldX, up.worldZ);
 								if (detectedRoom !== col.currentRoom) {
+									const prevRoom = col.currentRoom;
 									col.currentRoom = detectedRoom;
 									hudSyncAccumulator = 1.0;
+									if (
+										detectedRoom === "PAWN_HOUSE" &&
+										prevRoom !== "PAWN_HOUSE"
+									) {
+										tryResolveAnniversaryCollapse(col, {
+											arrivedAtHouse: true,
+										});
+									}
 								}
 
 								// Check physical collision with the distracted undergraduate student pacing near the Cafeteria doorway!
@@ -1441,7 +1463,7 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 					personalBalance: col.checkingBalance,
 					departmentalBalance: col.departmentalBudget,
 					equipmentSold: col.equipmentSoldForFee,
-					publishedAccepted: col.stage === "ACCEPTANCE_LETTER",
+					publishedAccepted: Boolean(col.publishedDoi),
 					realityShatterProgressSec: col.realityShatterProgressSec ?? 0,
 					isRidingTram: col.isRidingTram,
 					tramDestinationStationId: col.tramDestinationStationId,

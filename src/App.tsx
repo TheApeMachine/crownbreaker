@@ -530,7 +530,6 @@ export default function App() {
 		handleCommuteHomeForSpareShirt,
 		handleBuyTobyCroissant,
 		handleDismissAnniversaryArrival,
-		handleForcedAnniversaryWalkHome,
 		handleVancePhoneConsult,
 		handleVanceReviewEmail,
 		handleAssignMaritalAsset,
@@ -555,6 +554,8 @@ export default function App() {
 		handleSubmitToJournalOfTransfiniteCausality,
 		handleSellEquipmentForPerseusFee,
 		handleOpenAcceptanceLetter,
+		handleClosePerseusOffer,
+		handleOpenPerseusOffer,
 		handleBeginRealityShatter,
 		handleConcludePublicationAndRestorePieces,
 	} = useAcademicColloquiumActions({
@@ -812,7 +813,6 @@ export default function App() {
 					onPickUpCleanedShirt={handlePickUpCleanedShirt}
 					onBuyNewShirtAtHaberdashery={handleBuyNewShirtAtHaberdashery}
 					onBuyTobyCroissant={handleBuyTobyCroissant}
-					onForcedAnniversaryWalkHome={handleForcedAnniversaryWalkHome}
 					onDismissAnniversaryArrival={handleDismissAnniversaryArrival}
 					onCommuteHomeForSpareShirt={handleCommuteHomeForSpareShirt}
 					onToggleDriveCar={handleToggleDriveCar}
@@ -847,6 +847,8 @@ export default function App() {
 					}
 					onSellEquipmentForPerseusFee={handleSellEquipmentForPerseusFee}
 					onOpenAcceptanceLetter={handleOpenAcceptanceLetter}
+					onClosePerseusOffer={handleClosePerseusOffer}
+					onOpenPerseusOffer={handleOpenPerseusOffer}
 					onBeginRealityShatter={handleBeginRealityShatter}
 					onConcludePublicationAndRestorePieces={
 						handleConcludePublicationAndRestorePieces

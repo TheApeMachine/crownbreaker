@@ -232,12 +232,11 @@ export function createInitialAcademicColloquiumState(
 		},
 	];
 
-	// Start on Tuesday at 09:15 AM in Room 4B so the player has:
-	// - 10:00 AM meeting with Toby in Room 4B
-	// - Time to walk to the Cafeteria for coffee before the 14:30 Appointment with Prof. Bishop & Chairwoman Queen!
+	// Start already inside Room 4B — no essay gate. The rain, dead coffee machine,
+	// mortgage HUD, and Toby waiting at 10:00 are the exposition.
 	return {
 		active: true,
-		stage: "WORLD_COLLAPSE_FADE",
+		stage: "UNIVERSITY_SIMULATOR",
 		candidatePieceId: candidatePiece.id,
 		candidateLineageId: candidatePiece.lineageId || candidatePiece.id,
 		coAuthorTimelineCode,
@@ -327,6 +326,8 @@ export function createInitialAcademicColloquiumState(
 		anniversaryArrivalModalOpen: false,
 		depositionModalOpen: false,
 		hotPlateDinnerEatenTonight: false,
+		perseusOfferOpen: false,
+		acceptanceLetterOpen: false,
 
 		domesticArcStage: "INTACT",
 		anniversaryDateActive: true,
@@ -492,7 +493,6 @@ interface AcademicColloquiumOverlayProps {
 	onPickUpCleanedShirt: () => void;
 	onBuyNewShirtAtHaberdashery: () => void;
 	onBuyTobyCroissant: () => void;
-	onForcedAnniversaryWalkHome: () => void;
 	onDismissAnniversaryArrival: () => void;
 	onCommuteHomeForSpareShirt: () => void;
 	onToggleDriveCar?: () => void;
@@ -528,6 +528,8 @@ interface AcademicColloquiumOverlayProps {
 	onSubmitToJournalOfTransfiniteCausality: () => void;
 	onSellEquipmentForPerseusFee: () => void;
 	onOpenAcceptanceLetter: () => void;
+	onClosePerseusOffer: () => void;
+	onOpenPerseusOffer: () => void;
 	onBeginRealityShatter: () => void;
 	onConcludePublicationAndRestorePieces: () => void;
 	uniFirstPerson?: boolean;
@@ -551,7 +553,6 @@ export const AcademicColloquiumOverlay: React.FC<
 	onPickUpCleanedShirt,
 	onBuyNewShirtAtHaberdashery,
 	onBuyTobyCroissant,
-	onForcedAnniversaryWalkHome,
 	onDismissAnniversaryArrival,
 	onCommuteHomeForSpareShirt,
 	onToggleDriveCar,
@@ -582,6 +583,8 @@ export const AcademicColloquiumOverlay: React.FC<
 	onSubmitToJournalOfTransfiniteCausality,
 	onSellEquipmentForPerseusFee,
 	onOpenAcceptanceLetter,
+	onClosePerseusOffer,
+	onOpenPerseusOffer,
 	onBeginRealityShatter,
 	onConcludePublicationAndRestorePieces,
 	uniFirstPerson = false,
@@ -591,6 +594,12 @@ export const AcademicColloquiumOverlay: React.FC<
 	onResetUniCamera,
 }) => {
 	const [dismissedLog, setDismissedLog] = React.useState<string | null>(null);
+
+	React.useEffect(() => {
+		if (colloquium.active && colloquium.stage === "WORLD_COLLAPSE_FADE") {
+			onEnterUniversityOffice();
+		}
+	}, [colloquium.active, colloquium.stage, onEnterUniversityOffice]);
 
 	if (!colloquium.active || colloquium.stage === "INACTIVE") return null;
 
@@ -606,207 +615,21 @@ export const AcademicColloquiumOverlay: React.FC<
 		colloquium.inbox.find((e) => e.id === colloquium.selectedEmailId) ||
 		colloquium.inbox[0];
 
-	// ============================================================================
-	// STAGE 1: THE WORLD COLLAPSES & FADES INTO ROOM 4B, PEANO HALL
-	// ============================================================================
-	if (colloquium.stage === "WORLD_COLLAPSE_FADE") {
-		return (
-			<div className="pointer-events-auto fixed inset-0 z-50 bg-[#05070B]/95 backdrop-blur-md flex items-center justify-center p-6 overflow-y-auto">
-				<div className="max-w-2xl w-full bg-[#0B0F17] border border-slate-800 rounded-2xl p-8 md:p-10 shadow-[0_0_90px_rgba(0,0,0,0.95)] text-slate-200 font-serif">
-					<div className="text-[11px] font-mono uppercase tracking-[0.25em] text-amber-400/80 mb-4">
-						UNIVERSITY OF GREATER ANDROMEDA · PEANO HALL
-					</div>
-
-					<div className="space-y-4 text-base md:text-lg leading-relaxed text-slate-200">
-						<p className="text-slate-400 italic">The screen fades.</p>
-						<p>
-							A modest university office. Rain against the windows. A coffee
-							machine that hasn&rsquo;t worked since 1987.
-						</p>
-						<p>
-							You&rsquo;re now{" "}
-							<strong className="text-amber-300 font-semibold">Dr. Pawn</strong>
-							, an untenured researcher at the{" "}
-							<strong className="text-white font-semibold">
-								University of Greater Andromeda
-							</strong>
-							.
-						</p>
-						<p>
-							You have a salary (
-							<span className="font-mono text-sm text-emerald-300">
-								$48,200/yr
-							</span>
-							). A mortgage (
-							<span className="font-mono text-sm text-rose-300">$2,140/mo</span>{" "}
-							due this week, leaving{" "}
-							<span className="font-mono text-sm text-amber-300">$55.00</span>{" "}
-							in spare cash until Friday&rsquo;s paycheck). A strained
-							relationship with your department chair. A promising but
-							controversial paper:{" "}
-							<em className="text-sky-300">
-								&ldquo;On the Nonexistence of Monarchs in Retrocausal
-								Systems.&rdquo;
-							</em>
-						</p>
-						<p>
-							Your graduate student Toby has a <strong>10:00 AM</strong>{" "}
-							appointment in your office to tell you that Central Lemma 3.2 may
-							be incorrect. And at <strong>14:30</strong>, you have a mandatory
-							review with <strong>Professor Bishop</strong> in Seminar Room 204.
-						</p>
-						<p className="text-white font-bold pt-1">
-							And the chess game is gone.
-						</p>
-						<p className="text-slate-400 text-sm">
-							Not minimized. Not waiting behind a menu.{" "}
-							<span className="text-slate-200 italic">Gone.</span>
-						</p>
-					</div>
-
-					<div className="mt-8 pt-6 border-t border-slate-800/90 flex flex-col sm:flex-row items-center justify-between gap-4 font-sans">
-						<div className="text-xs font-mono text-slate-400">
-							📍 Room 4B, Peano Hall · Tuesday, 09:15 AM
-						</div>
-						<button
-							type="button"
-							onClick={onEnterUniversityOffice}
-							className="w-full sm:w-auto px-6 py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-extrabold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(245,158,11,0.35)]"
-						>
-							<span>Step Into Room 4B (Tuesday, 09:15)</span>
-							<ArrowRight className="w-4 h-4" />
-						</button>
-					</div>
-				</div>
-			</div>
-		);
-	}
-
-	// ============================================================================
-	// STAGE 4: THE ACCEPTANCE LETTER (QUIET TRIUMPH BEFORE REALITY SHATTERS)
-	// ============================================================================
-	if (colloquium.stage === "ACCEPTANCE_LETTER") {
-		return (
-			<div className="pointer-events-auto fixed inset-0 z-50 bg-[#04060A]/92 backdrop-blur-md flex items-center justify-center p-6 overflow-y-auto">
-				<div className="max-w-2xl w-full bg-[#0A0E17] border border-amber-400/50 rounded-2xl p-8 md:p-11 shadow-[0_0_110px_rgba(0,0,0,0.95)] text-slate-100 font-serif">
-					<div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6 font-sans">
-						<div>
-							<div className="text-[10px] font-mono uppercase tracking-[0.22em] text-amber-300 font-bold">
-								GALACTIC ADVANCES IN THEORETICAL EVERYTHING · PERSEUS ARM
-							</div>
-							<div className="text-xs font-mono text-slate-400 mt-0.5">
-								Impact Factor: 847.3 · Acceptance Rate: 100% · Peer Review:
-								Waived Upon Request
-							</div>
-						</div>
-						<Award className="w-8 h-8 text-amber-400 shrink-0" />
-					</div>
-
-					<div className="bg-[#0F1624] border border-slate-700/80 rounded-xl p-6 mb-6 space-y-3 text-base leading-relaxed text-slate-200">
-						<p className="font-mono text-xs text-emerald-300 uppercase tracking-wider">
-							FORMAL EDITORIAL DECISION: ACCEPTED FOR IMMEDIATE PUBLICATION
-						</p>
-						<p>Dear Dr. Pawn,</p>
-						<p>
-							We are delighted to inform you that your manuscript,{" "}
-							<strong className="text-sky-300">
-								&ldquo;On the Nonexistence of Monarchs in Retrocausal
-								Systems,&rdquo;
-							</strong>{" "}
-							has been accepted for publication (Open-Access Processing Fee of
-							$3,500.00 received in full via liquidated laboratory assets).
-						</p>
-						<p className="text-amber-200 font-semibold">
-							Your theorem is now formally recognized.
-						</p>
-					</div>
-
-					<div className="space-y-2.5 text-base md:text-lg text-slate-200 leading-relaxed pl-2 border-l-2 border-amber-400/60">
-						<p>You stand in Room 4B at 2:00 AM holding the letter.</p>
-						<p className="text-slate-400">
-							You have lost the house. You have lost your wife. You owe Arthur
-							Vance{" "}
-							<span className="font-mono text-rose-300">
-								${colloquium.legalDebtBalance.toFixed(0)}
-							</span>
-							. You sleep under a desk. You eat soup off a hot plate.
-						</p>
-						<p className="text-slate-300">Your life is in ruins.</p>
-						<p className="text-amber-200 font-semibold">
-							But the theorem is real.
-						</p>
-						<p className="text-2xl font-bold tracking-widest text-white pt-1 font-sans">
-							YOU DID IT.
-						</p>
-						<p className="text-slate-500 font-mono text-sm">...</p>
-					</div>
-
-					<div className="mt-8 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 font-sans">
-						<div className="text-xs font-mono text-slate-400">
-							Divorce papers on the desk. Vance bills in the drawer. The rain
-							still taps.
-						</div>
-						<button
-							type="button"
-							onClick={onBeginRealityShatter}
-							className="w-full sm:w-auto px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(245,158,11,0.3)]"
-						>
-							<span>Watch the Ruin Catch Cyan Flame...</span>
-							<ArrowRight className="w-4 h-4" />
-						</button>
-					</div>
-				</div>
-			</div>
-		);
-	}
-
-	// ============================================================================
-	// STAGE 5: THE FINAL BETRAYAL — REALITY SHATTERS BACK INTO CROWNBREAKER 4D
-	// ============================================================================
+	// Reality shatter is the only non-roam stage — keep it visual, keep copy short.
 	if (colloquium.stage === "REALITY_SHATTER_TRANSITION") {
 		const s = colloquium.realityShatterProgressSec || 0;
 		return (
 			<div className="pointer-events-none fixed inset-0 z-50 flex flex-col justify-between p-6 md:p-10">
-				<div className="max-w-xl bg-[#05070D]/88 border border-amber-400/50 rounded-2xl p-6 backdrop-blur-md shadow-2xl font-serif space-y-3">
+				<div className="max-w-md bg-[#05070D]/75 border border-amber-400/40 rounded-2xl px-5 py-4 backdrop-blur-md shadow-2xl font-serif">
 					<div className="text-[10px] font-mono uppercase tracking-[0.25em] text-amber-300">
-						{s < 2.2
-							? "OUTSIDE ROOM 4B · THE RAIN STOPS"
-							: s < 4.8
-								? "PEANO HALL FRACTURES"
-								: "THE MEMORY RETURNS"}
+						{s < 3 ? "PEANO HALL FRACTURES" : "THE BOARD REMEMBERS"}
 					</div>
-					<p className="text-sm md:text-base text-slate-200 leading-relaxed">
-						The divorce papers catch celestial cyan flame. Vance &amp;
-						Associates bills unfold into orbiting golden rune-glyphs. The rain
-						freezes in mid-air.
-					</p>
-					{s >= 2.0 && (
-						<p className="text-sm md:text-base text-slate-200 leading-relaxed">
-							The sleeping bag, the tomato soup cans, the clothesline, the 1987
-							coffee machine — all of it dissolves into pure 4D quantum
-							geometry. The misery was real. The marriage was real. The six
-							years happened.
+					{s >= 3 && (
+						<p className="mt-2 text-sm text-amber-100 leading-relaxed">
+							{colloquium.entanglementSwapUnlocked
+								? "CKW entanglement swap compiled. Checkmate Yesterday awaits."
+								: "Almost no time has passed on the board."}
 						</p>
-					)}
-					{s >= 4.2 && (
-						<p className="text-sm md:text-base text-amber-200 leading-relaxed">
-							You look down at your cracked cognac suede elbow patches — and you
-							remember what you are. The theorem that cost you your entire human
-							life is about to obliterate the Obsidian King from having ever
-							existed.
-						</p>
-					)}
-					{s >= 6.2 && (
-						<div className="pt-2 border-t border-slate-800 space-y-1.5 font-sans">
-							<p className="text-xs font-mono text-sky-300">
-								{colloquium.entanglementSwapUnlocked
-									? "CKW entanglement swap compiled. Checkmate Yesterday awaits."
-									: "In the original game, almost no time has passed."}
-							</p>
-							<p className="text-lg font-display font-extrabold tracking-wider text-white">
-								CROWNBREAKER 4D — YOUR MOVE.
-							</p>
-						</div>
 					)}
 				</div>
 
@@ -818,9 +641,7 @@ export const AcademicColloquiumOverlay: React.FC<
 					>
 						<Sparkles className="w-4 h-4" />
 						<span>
-							{s >= 6.0
-								? "Return to the Chessboard (Theorem Formally Recognized)"
-								: "Complete Reality Collapse →"}
+							{s >= 4.5 ? "Return to the Chessboard" : "Skip → Chessboard"}
 						</span>
 					</button>
 				</div>
@@ -829,119 +650,14 @@ export const AcademicColloquiumOverlay: React.FC<
 	}
 
 	// ============================================================================
-	// STAGE 3: THE PERSEUS ARM PREDATORY PUBLISHER OFFER
-	// ============================================================================
-	if (colloquium.stage === "PERSEUS_ARM_OFFER") {
-		const canAffordFee =
-			colloquium.checkingBalance >= 3500 || colloquium.equipmentSoldForFee;
-		return (
-			<div className="pointer-events-auto fixed inset-0 z-50 bg-[#05070C]/88 backdrop-blur-sm flex items-center justify-center p-4 md:p-6 overflow-y-auto">
-				<div className="max-w-2xl w-full bg-[#0C101B] border-2 border-fuchsia-500/70 rounded-2xl p-6 md:p-8 shadow-[0_0_80px_rgba(217,70,239,0.3)] text-slate-100">
-					<div className="text-[11px] font-mono uppercase tracking-[0.2em] text-fuchsia-300 font-bold">
-						SUSPICIOUS FLYER SLIPPED UNDER ROOM 4B’S DOOR · OUTER PERSEUS ARM
-					</div>
-					<h2 className="font-serif text-2xl font-bold text-white mt-1">
-						After Three Rejections from the Journal of Transfinite Causality...
-					</h2>
-					<p className="text-xs text-slate-300 mt-2 leading-relaxed">
-						Reviewer #2 (Tenured Professor Rook) has rejected your manuscript
-						three times. Your tenure clock is out of time. In the dimly lit
-						faculty corridor, Assoc. Prof. Knight hands you a glossy card from a
-						publisher operating out of a strip-mall satellite in the outer
-						reaches of the Perseus Arm:
-					</p>
-
-					<div className="mt-5 bg-linear-to-br from-[#190D26] to-[#0D1322] border border-amber-400/70 rounded-xl p-5">
-						<div className="font-serif text-xl font-bold text-amber-300 tracking-wide">
-							GALACTIC ADVANCES IN THEORETICAL EVERYTHING
-						</div>
-						<div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono text-xs">
-							<div className="bg-black/40 border border-slate-700/80 rounded-lg p-2.5">
-								<div className="text-[10px] text-slate-400">IMPACT FACTOR</div>
-								<div className="text-base font-extrabold text-emerald-300">
-									847.3
-								</div>
-							</div>
-							<div className="bg-black/40 border border-slate-700/80 rounded-lg p-2.5">
-								<div className="text-[10px] text-slate-400">
-									ACCEPTANCE RATE
-								</div>
-								<div className="text-base font-extrabold text-amber-300">
-									100%
-								</div>
-							</div>
-							<div className="bg-black/40 border border-slate-700/80 rounded-lg p-2.5">
-								<div className="text-[10px] text-slate-400">PEER REVIEW</div>
-								<div className="text-xs font-bold text-fuchsia-300 mt-0.5">
-									Available Upon Request
-								</div>
-							</div>
-						</div>
-
-						<div className="mt-4 text-xs text-slate-300 font-mono bg-black/35 rounded-lg p-3 border border-slate-800">
-							• Open-Access Processing Fee:{" "}
-							<strong className="text-rose-300">$3,500.00</strong> (Personal
-							Checking Balance:{" "}
-							<strong className="text-emerald-300">
-								${colloquium.checkingBalance.toFixed(2)}
-							</strong>
-							)
-							<br />• Liquidation Value of Room 4B Oscilloscope &amp;
-							Cryo-Interferometer:{" "}
-							<strong className="text-emerald-300">+$3,500.00</strong>
-						</div>
-					</div>
-
-					{colloquium.domesticArcStage !== "DEPOSITION_DONE" &&
-						colloquium.domesticArcStage !== "RUINED_BUT_PUBLISHED" && (
-							<div className="mt-4 text-[11px] font-mono text-amber-200/90 bg-amber-950/40 border border-amber-500/30 rounded-lg p-3">
-								Gate: complete the settlement deposition (CKW monogamy epiphany)
-								before the Perseus Arm will compile your theorem into executable
-								regicide.
-							</div>
-						)}
-
-					<div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-						<button
-							type="button"
-							onClick={() => onSetDrawerTab("NONE")}
-							className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs rounded-xl cursor-pointer"
-						>
-							← Return to Room 4B
-						</button>
-						{!canAffordFee ? (
-							<button
-								type="button"
-								onClick={onSellEquipmentForPerseusFee}
-								className="w-full sm:w-auto px-5 py-3 bg-rose-500 hover:bg-rose-400 text-slate-950 font-mono font-extrabold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-lg"
-							>
-								<FlaskConical className="w-4 h-4" />
-								<span>
-									Liquidate Office Lab Equipment (+$3,500.00 to Ledger)
-								</span>
-							</button>
-						) : (
-							<button
-								type="button"
-								onClick={onOpenAcceptanceLetter}
-								className="w-full sm:w-auto px-6 py-3 bg-linear-to-r from-amber-400 to-emerald-400 hover:from-amber-300 hover:to-emerald-300 text-slate-950 font-mono font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(245,158,11,0.4)]"
-							>
-								<CheckCircle2 className="w-4 h-4" />
-								<span>
-									Wire $3,500.00 Fee &amp; Open the Acceptance Letter →
-								</span>
-							</button>
-						)}
-					</div>
-				</div>
-			</div>
-		);
-	}
-
-	// ============================================================================
-	// STAGE 2: THE PLAYABLE 5-DAY UNIVERSITY LIFE SIMULATOR (3D CAMPUS + DIEGETIC HUD)
+	// FREE-ROAM UNIVERSITY SIMULATOR — campus is always playable; offers are documents, not stages
 	// ============================================================================
 	const currentRoomMeta = UNIVERSITY_ROOM_CENTERS[colloquium.currentRoom];
+	const canAffordPerseusFee =
+		colloquium.checkingBalance >= 3500 || colloquium.equipmentSoldForFee;
+	const showPerseusFlyer =
+		colloquium.perseusOfferOpen && !colloquium.acceptanceLetterOpen;
+	const showAcceptanceLetter = colloquium.acceptanceLetterOpen;
 	const ticket = colloquium.activeDryCleaningTicket;
 	const isTicketReady =
 		ticket &&
@@ -973,42 +689,153 @@ export const AcademicColloquiumOverlay: React.FC<
 		(a) => a.dayIndex === colloquium.dayIndex && a.status === "UPCOMING",
 	);
 	const unreadCount = colloquium.inbox.filter((e) => e.unread).length;
+	// Toast only for short diegetic cues — long essay logs stay in the notebook, not the HUD.
 	const latestNarrativeLine = colloquium.colloquiumLog[0] || null;
 	const showNarrativeToast =
 		latestNarrativeLine &&
+		latestNarrativeLine.length <= 110 &&
 		latestNarrativeLine !== dismissedLog &&
-		colloquium.activeDrawerTab === "NONE";
+		colloquium.activeDrawerTab === "NONE" &&
+		!showPerseusFlyer &&
+		!showAcceptanceLetter;
 
 	return (
 		<div className="pointer-events-none fixed inset-0 z-30 flex flex-col justify-between p-3 md:p-4 select-none">
-			{/* Anniversary arrival / yellow legal note */}
+			{/* Anniversary: only the yellow note — porch light / casserole live in the house mesh */}
 			{colloquium.anniversaryArrivalModalOpen && (
-				<div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
-					<div className="max-w-lg w-full bg-[#0c1018] border border-amber-500/40 rounded-2xl p-6 text-slate-100 space-y-4 shadow-2xl">
-						<div className="text-[10px] font-mono uppercase tracking-widest text-amber-300">
-							742 Retrocausal Terrace · 20:45
-						</div>
-						<h2 className="font-serif text-xl text-white">
-							The porch light is off.
-						</h2>
-						<p className="text-sm text-slate-300 leading-relaxed">
-							On the dining table: a single cold, congealed chicken casserole, a
-							melted candle, and no anniversary gift — personal checking holds $
-							{colloquium.checkingBalance.toFixed(2)}.
-						</p>
-						<div className="bg-amber-100 text-amber-950 rounded-lg p-4 font-mono text-xs leading-relaxed border-2 border-amber-300/80 rotate-[-0.5deg]">
+				<div className="pointer-events-auto fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-950/55">
+					<div className="max-w-md w-full space-y-3">
+						<div className="bg-amber-100 text-amber-950 rounded-lg p-5 font-mono text-xs leading-relaxed border-2 border-amber-300/80 rotate-[-0.8deg] shadow-2xl">
 							Seven years, Pawn. Seven years of &ldquo;once I get tenure.&rdquo;
 							You spent our anniversary at the office with Toby.
 							<br />
 							<br />
 							Don&apos;t call me. Arthur Vance will be in touch on Monday.
+							<br />
+							<br />
+							<span className="text-amber-800/80">
+								— The porch light is off. The casserole is cold. The candle
+								melted into the tablecloth.
+							</span>
 						</div>
 						<button
 							type="button"
 							onClick={onDismissAnniversaryArrival}
 							className="w-full py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-extrabold text-xs cursor-pointer"
 						>
-							Walk Back to Room 4B in Soaked Shoes
+							Put the note in your pocket
+						</button>
+					</div>
+				</div>
+			)}
+
+			{/* Diegetic Perseus flyer — does not freeze campus movement when closed */}
+			{showPerseusFlyer && colloquium.activeDrawerTab === "NONE" && (
+				<div className="pointer-events-auto absolute inset-x-0 top-16 z-40 flex justify-center px-3">
+					<div className="max-w-lg w-full bg-[#0C101B]/96 border-2 border-fuchsia-500/60 rounded-2xl p-5 shadow-[0_0_50px_rgba(217,70,239,0.25)] text-slate-100">
+						<div className="text-[10px] font-mono uppercase tracking-[0.2em] text-fuchsia-300 font-bold">
+							Flyer under Room 4B&apos;s door · Outer Perseus Arm
+						</div>
+						<div className="font-serif text-lg font-bold text-amber-300 mt-1 tracking-wide">
+							GALACTIC ADVANCES IN THEORETICAL EVERYTHING
+						</div>
+						<div className="mt-3 grid grid-cols-3 gap-2 font-mono text-[10px]">
+							<div className="bg-black/40 border border-slate-700/80 rounded-lg p-2">
+								<div className="text-slate-400">IMPACT</div>
+								<div className="text-sm font-extrabold text-emerald-300">
+									847.3
+								</div>
+							</div>
+							<div className="bg-black/40 border border-slate-700/80 rounded-lg p-2">
+								<div className="text-slate-400">ACCEPT</div>
+								<div className="text-sm font-extrabold text-amber-300">
+									100%
+								</div>
+							</div>
+							<div className="bg-black/40 border border-slate-700/80 rounded-lg p-2">
+								<div className="text-slate-400">PEER REVIEW</div>
+								<div className="text-[10px] font-bold text-fuchsia-300 mt-0.5">
+									Upon request
+								</div>
+							</div>
+						</div>
+						<p className="mt-3 text-[11px] font-mono text-slate-300">
+							Open-access fee <strong className="text-rose-300">$3,500</strong>{" "}
+							· Checking{" "}
+							<strong className="text-emerald-300">
+								${colloquium.checkingBalance.toFixed(2)}
+							</strong>{" "}
+							· Lab gear scrap value{" "}
+							<strong className="text-emerald-300">+$3,500</strong>
+						</p>
+						{colloquium.domesticArcStage !== "DEPOSITION_DONE" &&
+							colloquium.domesticArcStage !== "RUINED_BUT_PUBLISHED" && (
+								<p className="mt-2 text-[10px] font-mono text-amber-200/90">
+									Settlement deposition still unsigned — monogamy lemma
+									incomplete.
+								</p>
+							)}
+						<div className="mt-4 flex flex-wrap gap-2">
+							<button
+								type="button"
+								onClick={onClosePerseusOffer}
+								className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] rounded-lg cursor-pointer"
+							>
+								Leave flyer on the floor
+							</button>
+							{!canAffordPerseusFee ? (
+								<button
+									type="button"
+									onClick={onSellEquipmentForPerseusFee}
+									className="flex-1 px-3 py-2 bg-rose-500 hover:bg-rose-400 text-slate-950 font-mono font-extrabold text-[10px] rounded-lg cursor-pointer flex items-center justify-center gap-1.5"
+								>
+									<FlaskConical className="w-3.5 h-3.5" />
+									Sell oscilloscope &amp; cryo unit
+								</button>
+							) : (
+								<button
+									type="button"
+									onClick={onOpenAcceptanceLetter}
+									className="flex-1 px-3 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-extrabold text-[10px] rounded-lg cursor-pointer flex items-center justify-center gap-1.5"
+								>
+									<CheckCircle2 className="w-3.5 h-3.5" />
+									Wire fee · open acceptance
+								</button>
+							)}
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Acceptance letter on the desk — ruin is already visible in 4B living props */}
+			{showAcceptanceLetter && colloquium.activeDrawerTab === "NONE" && (
+				<div className="pointer-events-auto absolute inset-x-0 top-16 z-40 flex justify-center px-3">
+					<div className="max-w-md w-full bg-[#0A0E17]/96 border border-amber-400/50 rounded-2xl p-5 shadow-2xl text-slate-100 font-serif">
+						<div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3 mb-3">
+							<div>
+								<div className="text-[10px] font-mono uppercase tracking-[0.2em] text-amber-300 font-bold">
+									Galactic Advances · Accepted
+								</div>
+								<div className="text-[10px] font-mono text-slate-400 mt-0.5">
+									IF 847.3 · Fee received
+								</div>
+							</div>
+							<Award className="w-6 h-6 text-amber-400 shrink-0" />
+						</div>
+						<p className="text-sm text-slate-200 leading-relaxed">
+							Manuscript accepted. The sleeping bag, Vance ledger, and empty lab
+							bench already say the rest.
+						</p>
+						<p className="mt-2 text-amber-200 font-semibold text-sm">
+							The theorem is real.
+						</p>
+						<button
+							type="button"
+							onClick={onBeginRealityShatter}
+							className="mt-4 w-full px-4 py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-extrabold text-xs rounded-xl cursor-pointer flex items-center justify-center gap-2"
+						>
+							<span>Let Room 4B catch cyan flame</span>
+							<ArrowRight className="w-4 h-4" />
 						</button>
 					</div>
 				</div>
@@ -1946,18 +1773,6 @@ export const AcademicColloquiumOverlay: React.FC<
 										</strong>
 									</div>
 									<div className="flex flex-wrap items-center gap-1.5">
-										<button
-											type="button"
-											onClick={() =>
-												onAdvanceTimeMinutes(
-													30,
-													"Worked at office desk for 30 minutes",
-												)
-											}
-											className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-[11px] rounded-lg cursor-pointer"
-										>
-											+30m Work
-										</button>
 										{colloquium.hasSpareCleanShirtAtHome &&
 											colloquium.shirtState !== "CLEAN" && (
 												<button
@@ -1965,7 +1780,9 @@ export const AcademicColloquiumOverlay: React.FC<
 													onClick={onCommuteHomeForSpareShirt}
 													className="px-2.5 py-1 bg-sky-900/80 hover:bg-sky-800 text-sky-100 font-mono text-[11px] rounded-lg cursor-pointer"
 												>
-													Bus Home for Spare Shirt ($5.50 · 95m)
+													{colloquium.currentRoom === "PAWN_HOUSE"
+														? "Change into Spare Shirt"
+														: "Go Home for Spare Shirt"}
 												</button>
 											)}
 										<button
@@ -2390,6 +2207,28 @@ export const AcademicColloquiumOverlay: React.FC<
 							>
 								Submit Paper ({colloquium.journalRejections}/3)
 							</button>
+							{colloquium.journalRejections >= 3 &&
+								!colloquium.publishedDoi &&
+								!colloquium.perseusOfferOpen && (
+									<button
+										type="button"
+										onClick={onOpenPerseusOffer}
+										className="px-2.5 py-1 rounded-xl bg-fuchsia-500/25 hover:bg-fuchsia-500/35 border border-fuchsia-400/50 text-fuchsia-100 font-mono text-[11px] font-bold cursor-pointer"
+									>
+										Pick up flyer on the floor
+									</button>
+								)}
+							{colloquium.publishedDoi &&
+								!colloquium.acceptanceLetterOpen &&
+								colloquium.stage === "UNIVERSITY_SIMULATOR" && (
+									<button
+										type="button"
+										onClick={onOpenAcceptanceLetter}
+										className="px-2.5 py-1 rounded-xl bg-amber-400/25 hover:bg-amber-400/35 border border-amber-300/50 text-amber-100 font-mono text-[11px] font-bold cursor-pointer"
+									>
+										Read acceptance letter on desk
+									</button>
+								)}
 						</>
 					)}
 
@@ -2601,20 +2440,17 @@ export const AcademicColloquiumOverlay: React.FC<
 							</>
 						)}
 
-					{colloquium.tobyCroissantPurchased &&
-						colloquium.domesticArcStage === "CROISSANT_BOUGHT" &&
-						mins >= 17 * 60 + 15 && (
-							<button
-								type="button"
-								onClick={onForcedAnniversaryWalkHome}
-								className="px-3 py-1 rounded-xl bg-slate-200 hover:bg-white text-slate-950 font-mono text-[11px] font-extrabold cursor-pointer flex items-center gap-1.5 border border-slate-400"
-							>
-								<Footprints className="w-3.5 h-3.5" />
+					{(colloquium.domesticArcStage === "CROISSANT_BOUGHT" ||
+						colloquium.domesticArcStage === "ANNIVERSARY_WALK") &&
+						mins >= 17 * 60 + 15 &&
+						colloquium.homeAccess === "OWNED" && (
+							<div className="px-2.5 py-1 rounded-xl bg-slate-900/80 border border-slate-600/60 text-slate-300 font-mono text-[10px] flex items-center gap-1.5">
+								<Footprints className="w-3.5 h-3.5 text-amber-300" />
 								<span>
-									Walk Six Miles Home in Freezing Slush
-									{colloquium.checkingBalance < 5.5 ? " (No Bus Fare)" : ""}
+									Dinner was waiting — walk, drive, or take the tram west to 742
+									Retrocausal Terrace
 								</span>
-							</button>
+							</div>
 						)}
 
 					<div className="h-4 w-px bg-slate-800 mx-0.5 hidden sm:block" />

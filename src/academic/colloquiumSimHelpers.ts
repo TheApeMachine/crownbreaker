@@ -1,7 +1,6 @@
 import { soundEngine } from "../audio/soundEngine";
 import {
 	triggerCoffeeSpill3DSplash,
-	UNIVERSITY_ROOM_CENTERS,
 	type UniversityOfficeRig,
 } from "../three/universityOfficeBuilder";
 import type {
@@ -240,48 +239,37 @@ export type UniNavSim = {
 	cameraShake: number;
 };
 
-export function executeForcedAnniversaryWalkHome(
+/**
+ * Anniversary collapse resolves only when the player has actually reached
+ * 742 Retrocausal Terrace (or abandoned the night by sleeping elsewhere).
+ * No teleports. No time-skips. The city walk is the play.
+ */
+export function tryResolveAnniversaryCollapse(
 	col: AcademicColloquiumState,
-	sim: UniNavSim,
-) {
-	col.anniversaryWalkForced = true;
-	col.domesticArcStage = "ANNIVERSARY_WALK";
-	col.isDrivingCar = false;
-	sim.uniCar.isDriving = false;
-	col.tramTransitModalOpen = false;
-
-	col.colloquiumLog = [
-		`🚌 [${formatSimClock(col.timeOfDayMinutes)}] Crosstown Bus fare: $5.50. Personal Checking: $${col.checkingBalance.toFixed(2)}. Declined.`,
-		`🌧️ You walk. Six miles of Perseus Boulevard in freezing slush. Dress shoes soak through. Wet wool jacket weighs eighteen pounds and smells like wet sheep. Every car throws dirty street-slush across your corduroy trousers.`,
-		...col.colloquiumLog.slice(0, 8),
-	];
-
-	advanceSimMinutes(
-		col,
-		180,
-		"Walked six miles home in freezing slush because Toby got a croissant",
-	);
-	col.energyLevel = Math.max(5, col.energyLevel - 42);
-	col.timeOfDayMinutes = Math.max(col.timeOfDayMinutes, 20 * 60 + 45);
-	col.currentRoom = "PAWN_HOUSE";
-	const home = UNIVERSITY_ROOM_CENTERS.PAWN_HOUSE;
-	sim.uniPlayer.worldX = home.x;
-	sim.uniPlayer.worldZ = home.z;
-	sim.uniPlayer.targetX = null;
-	sim.uniPlayer.targetZ = null;
+	opts: { arrivedAtHouse: boolean },
+): boolean {
+	if (
+		!col.tobyCroissantPurchased ||
+		(col.domesticArcStage !== "CROISSANT_BOUGHT" &&
+			col.domesticArcStage !== "ANNIVERSARY_WALK") ||
+		col.homeAccess !== "OWNED"
+	) {
+		return false;
+	}
 
 	col.domesticArcStage = "NOTE_RECEIVED";
-	col.anniversaryArrivalModalOpen = true;
+	col.anniversaryWalkForced = false;
 	col.hasSpareCleanShirtAtHome = false;
 	col.homeAccess = "LOCKED_OUT";
 	col.livingInOffice4B = true;
+	col.anniversaryArrivalModalOpen = opts.arrivedAtHouse;
 
 	const noteEmail = {
 		id: `email_anniversary_note_${Date.now()}`,
 		sender: "Your Wife",
 		senderRole: "742 Retrocausal Terrace · Lined Yellow Legal Paper",
 		subject: "Seven years, Pawn.",
-		dateLabel: `Tuesday ${formatSimClock(col.timeOfDayMinutes)}`,
+		dateLabel: `${DAY_NAMES_LIST[col.dayIndex % 5]} ${formatSimClock(col.timeOfDayMinutes)}`,
 		category: "SPOUSE" as const,
 		unread: true,
 		body: `Seven years, Pawn. Seven years of "once I get tenure." You spent our anniversary at the office with Toby.\n\nDon't call me. Arthur Vance will be in touch on Monday.\n\n— The porch light is off. The casserole is cold. The candle melted into the tablecloth.`,
@@ -299,15 +287,19 @@ export function executeForcedAnniversaryWalkHome(
 	col.inbox = [noteEmail, vanceEmail, ...col.inbox];
 	col.selectedEmailId = noteEmail.id;
 	col.npcMemoryNotes = [
-		"ANNIVERSARY COLLAPSE: Cold casserole. Melted candle. Yellow legal note. Arthur Vance on Monday.",
+		opts.arrivedAtHouse
+			? "Porch light off. Yellow legal note. Keys dead. Arthur Vance Monday."
+			: "Never made it home. Note and Vance email waiting. Keys dead.",
 		...col.npcMemoryNotes.slice(0, 5),
 	];
 	col.colloquiumLog = [
-		`🕯️ [${formatSimClock(col.timeOfDayMinutes)}] Arrived at 742 Retrocausal Terrace three hours late. Porch light off. Cold chicken casserole. Melted candle. No gift — checking holds $${col.checkingBalance.toFixed(2)}.`,
-		`📜 Yellow legal paper on the counter: "Seven years, Pawn... Arthur Vance will be in touch on Monday."`,
-		...col.colloquiumLog.slice(0, 8),
+		opts.arrivedAtHouse
+			? `🕯️ [${formatSimClock(col.timeOfDayMinutes)}] 742 Retrocausal Terrace — porch light off.`
+			: `🕯️ [${formatSimClock(col.timeOfDayMinutes)}] You never made it to Retrocausal Terrace. The porch light went out without you.`,
+		...col.colloquiumLog.slice(0, 9),
 	];
 	soundEngine.playRejectionStamp();
+	return true;
 }
 
 export function triggerCafeteriaCollisionSpill(
