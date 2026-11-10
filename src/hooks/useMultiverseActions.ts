@@ -104,6 +104,9 @@ export type MultiverseSimRef = {
 		yaw: number;
 		targetX: number | null;
 		targetZ: number | null;
+		pendingUniInteract: string | null;
+		pendingInteractX: number | null;
+		pendingInteractZ: number | null;
 	};
 	pieceRigs: Map<string, ArticulatedPieceRig>;
 	arenaRig: BoardArenaRig | null;
@@ -1074,6 +1077,9 @@ export function useMultiverseActions({
 				sim.uniPlayer.yaw = 0;
 				sim.uniPlayer.targetX = null;
 				sim.uniPlayer.targetZ = null;
+				sim.uniPlayer.pendingUniInteract = null;
+				sim.uniPlayer.pendingInteractX = null;
+				sim.uniPlayer.pendingInteractZ = null;
 				setPhase("ACADEMIC_SIMULATOR");
 				setAcademicColloquium({ ...colState });
 				// No watch banner — rain, Room 4B, and the dead coffee machine are the welcome.

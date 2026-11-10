@@ -8,6 +8,8 @@ import {
 import type { PerspectiveCamera } from "three";
 import {
 	advanceSimMinutes,
+	clearPendingUniInteract,
+	queuePendingUniInteract,
 	appendPerseusArmColleagueEmail,
 	computeChshS,
 	DAY_NAMES_LIST,
@@ -76,6 +78,17 @@ export type AcademicColloquiumSimRef = {
 		yaw: number;
 		targetX: number | null;
 		targetZ: number | null;
+		pendingUniInteract: string | null;
+		pendingInteractX: number | null;
+		pendingInteractZ: number | null;
+	};
+	uniTransit: {
+		isRiding: boolean;
+		destinationStationId: string | null;
+		transitTimer: number;
+		startX: number;
+		startZ: number;
+		rideDurationSec: number;
 	};
 	uniCar: {
 		isDriving: boolean;
@@ -128,6 +141,7 @@ export function useAcademicColloquiumActions({
 		sim.uniPlayer.yaw = 0;
 		sim.uniPlayer.targetX = null;
 		sim.uniPlayer.targetZ = null;
+		clearPendingUniInteract(sim.uniPlayer);
 		soundEngine.playOfficeKeyboardClack();
 		setAcademicColloquium({ ...col });
 	}, []);
@@ -310,48 +324,24 @@ export function useAcademicColloquiumActions({
 			-1.75,
 		);
 
-		advanceSimMinutes(
-			col,
-			7,
-			`Rode GAMTA Retrocausal Tram to ${st.shortLabel}`,
-		);
-		col.energyLevel = Math.min(100, col.energyLevel + 6);
 		col.tramTransitModalOpen = false;
-		col.isRidingTram = false;
-
-		// Relocate player to station platform — then they walk the last block on foot.
-		sim.uniPlayer.worldX =
-			st.x + Math.sin(st.platformAngle + Math.PI / 2) * 2.8;
-		sim.uniPlayer.worldZ =
-			st.z + Math.cos(st.platformAngle + Math.PI / 2) * 2.8;
+		col.isRidingTram = true;
 		sim.uniPlayer.targetX = null;
 		sim.uniPlayer.targetZ = null;
-
-		if (stationId === "PEANO_QUAD") {
-			col.currentRoom = "CAMPUS_QUAD";
-		} else if (stationId === "DOWNTOWN_PERSEUS") {
-			col.currentRoom = "DRY_CLEANER";
-		} else if (stationId === "KEPLER_SUBURBS") {
-			col.currentRoom = "CITY_STREETS";
-			if (
-				col.tobyCroissantPurchased &&
-				(col.domesticArcStage === "CROISSANT_BOUGHT" ||
-					col.domesticArcStage === "ANNIVERSARY_WALK")
-			) {
-				col.domesticArcStage = "ANNIVERSARY_WALK";
-				sim.uniPlayer.targetX = UNIVERSITY_ROOM_CENTERS.PAWN_HOUSE.x;
-				sim.uniPlayer.targetZ = UNIVERSITY_ROOM_CENTERS.PAWN_HOUSE.z;
-			}
-		} else {
-			col.currentRoom = "CAMPUS_QUAD";
-		}
+		clearPendingUniInteract(sim.uniPlayer);
+		sim.uniTransit.isRiding = true;
+		sim.uniTransit.destinationStationId = stationId;
+		sim.uniTransit.transitTimer = 0;
+		sim.uniTransit.startX = sim.uniPlayer.worldX;
+		sim.uniTransit.startZ = sim.uniPlayer.worldZ;
+		sim.uniTransit.rideDurationSec = 12;
 
 		soundEngine.playTramChime();
 		soundEngine.playTramBell();
 		soundEngine.playTramMotorHum();
 
 		col.colloquiumLog = [
-			`🚈 [${formatSimClock(col.timeOfDayMinutes)}] GAMTA Line 1 → ${st.name} (−$1.75).`,
+			`🚈 [${formatSimClock(col.timeOfDayMinutes)}] Boarded GAMTA Line 1 toward ${st.name} (−$1.75). Hold on — the ride is underway.`,
 			...col.colloquiumLog.slice(0, 9),
 		];
 
@@ -379,6 +369,29 @@ export function useAcademicColloquiumActions({
 					...col.colloquiumLog.slice(0, 9),
 				];
 				soundEngine.playRejectionStamp();
+				setAcademicColloquium({ ...col });
+				return;
+			}
+
+			const deskTabs = new Set([
+				"CHALKBOARD_PROOF",
+				"PINE_MAIL",
+				"FINANCE_LEDGER",
+			]);
+			if (tab !== "NONE" && deskTabs.has(tab) && col.currentRoom !== "OFFICE_4B") {
+				const dest = UNIVERSITY_ROOM_CENTERS.OFFICE_4B;
+				const tag =
+					tab === "CHALKBOARD_PROOF"
+						? "OPEN_CHALKBOARD"
+						: tab === "PINE_MAIL"
+							? "OPEN_PINE_MAIL"
+							: "OPEN_FINANCE_LEDGER";
+				queuePendingUniInteract(sim.uniPlayer, tag, dest.x, dest.z);
+				col.colloquiumLog = [
+					`🚶 [${formatSimClock(col.timeOfDayMinutes)}] Desk work lives in Room 4B — walking there first.`,
+					...col.colloquiumLog.slice(0, 9),
+				];
+				soundEngine.playOfficeKeyboardClack();
 				setAcademicColloquium({ ...col });
 				return;
 			}
@@ -1232,6 +1245,7 @@ export function useAcademicColloquiumActions({
 			const col = sim.academicColloquium;
 			if (!col?.active) return;
 
+			advanceSimMinutes(col, 25, "Worked the boundary gauge on the chalkboard");
 			col.proofWorkbench.boundaryGaugeChoice = gauge;
 			if (gauge === "CHIRAL_ANTIPERIODIC") {
 				col.proofWorkbench.boundaryGaugeVerified = true;
@@ -1260,6 +1274,7 @@ export function useAcademicColloquiumActions({
 		const col = sim.academicColloquium;
 		if (!col?.active) return;
 
+		advanceSimMinutes(col, 20, "Re-derived the off-diagonal Jacobian");
 		col.proofWorkbench.jacobianSignFlipped =
 			!col.proofWorkbench.jacobianSignFlipped;
 		col.proofWorkbench.lastVerificationMessage = col.proofWorkbench
@@ -1309,15 +1324,28 @@ export function useAcademicColloquiumActions({
 			return;
 		}
 
+		const tod = col.timeOfDayMinutes;
+		const nightWindow = tod >= 1 * 60 + 30 && tod <= 4 * 60;
+		if (!nightWindow) {
+			col.colloquiumLog = [
+				`🔬 [${formatSimClock(col.timeOfDayMinutes)}] Liquid-helium runs are booked for the 01:30–04:00 night slot. Stay late or come back then — no remote data.`,
+				...col.colloquiumLog.slice(0, 9),
+			];
+			soundEngine.playRejectionStamp();
+			setAcademicColloquium({ ...col });
+			return;
+		}
+
 		recordDepartmentalTransaction(
 			col,
 			"Chiral Interferometry Facility — Liquid Helium & Mirror Calibration Run",
 			"LAB_EQUIPMENT",
 			-950,
 		);
+		advanceSimMinutes(col, 45, "Ran the chiral interferometer through cooldown");
 		col.proofWorkbench.chiralLabDataAttached = true;
 		col.proofWorkbench.lastVerificationMessage =
-			"✓ 02:00 AM Chiral Interferometer data attached (4.8σ retrocausal phase convergence)!";
+			"✓ Night Chiral Interferometer data attached (4.8σ retrocausal phase convergence)!";
 		recomputeProofIntegrity(col);
 
 		if (
@@ -1339,7 +1367,7 @@ export function useAcademicColloquiumActions({
 		}
 
 		col.colloquiumLog = [
-			`🔬 [${formatSimClock(col.timeOfDayMinutes)}] Ran 02:00 AM Chiral Interferometer experiment (-$950 Dept. Budget). Central Lemma 3.2 Integrity is now ${col.centralLemmaIntegrity}%!`,
+			`🔬 [${formatSimClock(col.timeOfDayMinutes)}] Finished night Chiral Interferometer run (−$950 Dept. Budget). Central Lemma 3.2 Integrity is now ${col.centralLemmaIntegrity}%!`,
 			...col.colloquiumLog.slice(0, 9),
 		];
 		soundEngine.playSynodResonance(false);
@@ -1351,6 +1379,7 @@ export function useAcademicColloquiumActions({
 		const col = sim.academicColloquium;
 		if (!col?.active) return;
 
+		advanceSimMinutes(col, 15, "Inserted / removed Rook citations in §2");
 		col.proofWorkbench.rookCitationsAttached =
 			!col.proofWorkbench.rookCitationsAttached;
 		col.reviewer2CitationsBribed = col.proofWorkbench.rookCitationsAttached;
@@ -1512,8 +1541,44 @@ export function useAcademicColloquiumActions({
 		const col = sim.academicColloquium;
 		if (!col?.active) return;
 
+		const atOwnedBed =
+			col.currentRoom === "PAWN_HOUSE" && col.homeAccess === "OWNED";
+		const atOfficeCot =
+			col.currentRoom === "OFFICE_4B" &&
+			(col.livingInOffice4B ||
+				col.domesticArcStage === "CROISSANT_BOUGHT" ||
+				col.domesticArcStage === "ANNIVERSARY_WALK");
+		if (!atOwnedBed && !atOfficeCot) {
+			if (col.homeAccess === "OWNED") {
+				const dest = UNIVERSITY_ROOM_CENTERS.PAWN_HOUSE;
+				queuePendingUniInteract(sim.uniPlayer, "HOME_BED", dest.x, dest.z);
+				col.colloquiumLog = [
+					`🚶 [${formatSimClock(col.timeOfDayMinutes)}] Sleep requires a bed — walking home to 742 Retrocausal Terrace.`,
+					...col.colloquiumLog.slice(0, 9),
+				];
+			} else if (col.livingInOffice4B) {
+				const dest = UNIVERSITY_ROOM_CENTERS.OFFICE_4B;
+				queuePendingUniInteract(sim.uniPlayer, "HOME_BED", dest.x, dest.z);
+				col.colloquiumLog = [
+					`🚶 [${formatSimClock(col.timeOfDayMinutes)}] Nowhere else to sleep — heading back to the bag under the oak desk.`,
+					...col.colloquiumLog.slice(0, 9),
+				];
+			} else {
+				col.colloquiumLog = [
+					`😴 [${formatSimClock(col.timeOfDayMinutes)}] You need a bed — home if you still have keys, or the office cot if you're living in 4B.`,
+					...col.colloquiumLog.slice(0, 9),
+				];
+				soundEngine.playRejectionStamp();
+			}
+			setAcademicColloquium({ ...col });
+			return;
+		}
+
 		// Slept through the night without going home — consequence, not a cutscene teleport.
-		if (tryResolveAnniversaryCollapse(col, { arrivedAtHouse: false })) {
+		if (
+			!atOwnedBed &&
+			tryResolveAnniversaryCollapse(col, { arrivedAtHouse: false })
+		) {
 			setAcademicColloquium({ ...col });
 			// Fall through into the normal morning so the day still advances.
 		}
@@ -1575,6 +1640,7 @@ export function useAcademicColloquiumActions({
 		col.cafeteriaServiceProgress = 0;
 		sim.uniPlayer.targetX = null;
 		sim.uniPlayer.targetZ = null;
+		clearPendingUniInteract(sim.uniPlayer);
 		// Wake where you slept — no office teleport.
 
 		const place =

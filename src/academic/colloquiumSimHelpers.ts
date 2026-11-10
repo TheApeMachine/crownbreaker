@@ -234,10 +234,36 @@ export type UniNavSim = {
 		worldZ: number;
 		targetX: number | null;
 		targetZ: number | null;
+		pendingUniInteract?: string | null;
+		pendingInteractX?: number | null;
+		pendingInteractZ?: number | null;
 	};
 	universityOfficeRig: UniversityOfficeRig | null;
 	cameraShake: number;
 };
+
+export function clearPendingUniInteract(
+	up: UniNavSim["uniPlayer"],
+): void {
+	up.pendingUniInteract = null;
+	up.pendingInteractX = null;
+	up.pendingInteractZ = null;
+}
+
+export function queuePendingUniInteract(
+	up: UniNavSim["uniPlayer"],
+	tag: string,
+	x: number | null,
+	z: number | null,
+): void {
+	up.pendingUniInteract = tag;
+	up.pendingInteractX = x;
+	up.pendingInteractZ = z;
+	if (x !== null && z !== null) {
+		up.targetX = x;
+		up.targetZ = z;
+	}
+}
 
 /**
  * Anniversary collapse resolves only when the player has actually reached

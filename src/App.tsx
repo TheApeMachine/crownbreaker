@@ -262,6 +262,9 @@ export default function App() {
 			yaw: number;
 			targetX: number | null;
 			targetZ: number | null;
+			pendingUniInteract: string | null;
+			pendingInteractX: number | null;
+			pendingInteractZ: number | null;
 		};
 		uniCar: {
 			worldX: number;
@@ -274,6 +277,9 @@ export default function App() {
 			isRiding: boolean;
 			destinationStationId: string | null;
 			transitTimer: number;
+			startX: number;
+			startZ: number;
+			rideDurationSec: number;
 		};
 		mouseLook: {
 			isDragging: boolean;
@@ -353,6 +359,9 @@ export default function App() {
 			yaw: 0,
 			targetX: null as number | null,
 			targetZ: null as number | null,
+			pendingUniInteract: null as string | null,
+			pendingInteractX: null as number | null,
+			pendingInteractZ: null as number | null,
 		},
 		uniCar: {
 			worldX: -6.0,
@@ -365,6 +374,9 @@ export default function App() {
 			isRiding: false,
 			destinationStationId: null as string | null,
 			transitTimer: 0,
+			startX: 0,
+			startZ: 0,
+			rideDurationSec: 12,
 		},
 		mouseLook: {
 			isDragging: false,

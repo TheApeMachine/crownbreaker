@@ -256,6 +256,9 @@ export function useShowcaseActions({
 				sim.uniPlayer.yaw = 0;
 				sim.uniPlayer.targetX = null;
 				sim.uniPlayer.targetZ = null;
+				sim.uniPlayer.pendingUniInteract = null;
+				sim.uniPlayer.pendingInteractX = null;
+				sim.uniPlayer.pendingInteractZ = null;
 				soundEngine.playOfficeKeyboardClack();
 				syncActiveBranchFromSim();
 				setMultiverseState({ ...sim.multiverse });

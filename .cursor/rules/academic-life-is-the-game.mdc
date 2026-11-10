@@ -1,0 +1,83 @@
+---
+description: Crownbreaker fundamental design — academic life IS the game, not a chess intermission
+alwaysApply: true
+---
+
+# CROWNBREAKER — THE ACADEMIC LIFE IS THE GAME
+
+## The fundamental design intention
+
+**The University of Greater Andromeda is not a minigame, side quest, intermission, or secondary mode. It is intended to become the player's entire world.**
+
+The game deliberately begins as something else: high-octane 4D galactic chess (combat, timelines, realms, multiverse). Then the player becomes Dr. Pawn. The chess universe disappears. They have a career, colleagues, students, ambitions, finances, a spouse, a home, and an ordinary life.
+
+The intention is **not** a short academic sequence before returning to chess. The intention is to make the academic world so involving, detailed, autonomous, and convincing that the player hopefully forgets the original game ever existed.
+
+**We want the player to become invested in being Dr. Pawn.**
+
+## Life simulation, not a mission sequence
+
+- Substantial freedom: research, teaching, students, colleagues, grants, politics, finances, marriage — player priorities, not a prescribed objective chain.
+- Larger narrative exists, but arrives through decisions and activity, not shepherding through scripted events.
+- World accommodates different priorities, mistakes, and outcomes.
+- Do **not** assume the player wants the next story beat as fast as possible.
+
+## Embodied activities — the player lives them
+
+Actually interactive, not buttons that announce completion:
+
+- Walk buildings and campus; drive the car; use transit; navigate town.
+- Physically attend appointments; find and talk to people.
+- Read and respond to emails.
+- Work at desk / facilities; work through math; run experiments and interpret results.
+- Write, revise, submit papers; grants, budgets, reviewers, admin.
+- Personal and professional decisions with consequences.
+
+Research means doing research. Math means mathematical engagement. Emails are read and answered. Walking/driving means physically going there.
+
+**Embodied interaction with a simulated world — not menus that pretend to be a world.**
+
+## The world has its own existence
+
+- NPCs: schedules, responsibilities, personalities, relationships, memories, motivations.
+- People remember treatment, missed meetings, broken promises, achievements, conflicts.
+- Time matters. Appointments happen. Colleagues live their days. Opportunities appear and vanish. Competing obligations force choices.
+- World continues independently; the player is part of it, not its sole purpose.
+
+## Freedom and consequences
+
+Freedom allows terrible decisions and real consequences. Do **not** railroad marriage collapse, career failure, friendship, promotion, or other major beats solely to advance plot. Narrative emerges from simulation, player action, circumstances, and modelled world events. Intended story can coexist with freedom — it must not replace it.
+
+## Relationship to chess / Crownbreaker return
+
+Return matters **because** the player invested in this life. It should feel like a collision of realities — ideally after so much time in research, students, colleagues, money, and family that the cosmic chessboard nearly left their mind. Do **not** constantly remind them they are “away from the real game.” Let Dr. Pawn’s world stand alone.
+
+## Evaluate every change against
+
+1. More convincing, interactive, autonomous, or involving academic world?
+2. More freedom to shape their own life?
+3. Meaningful consequences and persistent relationships?
+4. Player performs the activity vs abstract button/menu?
+5. Stronger sense of a real, persistent world?
+
+## Avoid
+
+- Academic activities as simple quest objectives
+- University as temporary interruption
+- Predetermined narrative railroad
+- Arbitrary progress meters replacing interaction
+- Auto-resolving activities the player should perform
+- Artificial urgency only to push the next story beat
+- Systems that exist mainly to unlock return to chess
+- Showcase features that look impressive but hollow out play
+
+## Agent instructions
+
+- This is a **fundamental design constraint**, not an invitation to redesign everything.
+- Understand existing implementation and interactions before proposing changes.
+- Prefer the **smallest correct change** that advances this intention.
+- Do not replace systems with abstractions, shortcuts, placeholders, or scripted demos.
+- Do not invent architecture or broad-refactor “because it could be different.”
+- Do not mistake chess for the primary experience everything else must serve.
+
+**The academic life is not content between two chess sequences. The academic life is the game.**

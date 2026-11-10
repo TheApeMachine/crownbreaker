@@ -15,7 +15,9 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import {
+	clearPendingUniInteract,
 	formatSimClock,
+	queuePendingUniInteract,
 	recordPersonalTransaction,
 	syncAppointmentsWithClock,
 	triggerCafeteriaCollisionSpill,
@@ -89,6 +91,8 @@ import {
 import {
 	createUniversityOfficeRig,
 	getRoomAtWorldPos,
+	TRAM_STATIONS,
+	UNIVERSITY_ROOM_CENTERS,
 	updateUniversityOfficeScene,
 } from "../three/universityOfficeBuilder";
 import type { CameraPreset } from "../types/appCamera";
@@ -535,6 +539,75 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 			setHoveredCaptureMove(matchMove || null);
 		};
 
+		const resolveUniInteractTag = (actionTag: string) => {
+			if (actionTag === "OPEN_CHALKBOARD") {
+				handleSetDrawerTab("CHALKBOARD_PROOF");
+			} else if (actionTag === "OPEN_PINE_MAIL") {
+				handleSetDrawerTab("PINE_MAIL");
+			} else if (actionTag === "OPEN_FINANCE_LEDGER") {
+				handleSetDrawerTab("FINANCE_LEDGER");
+			} else if (actionTag === "KICK_COFFEE_MACHINE") {
+				handleKickCoffeeMachine();
+			} else if (actionTag === "TALK_TOBY") {
+				handleTalkToNpcInRoom("TOBY");
+			} else if (actionTag === "TALK_BISHOP") {
+				handleTalkToNpcInRoom("BISHOP");
+			} else if (actionTag === "TALK_QUEEN") {
+				handleTalkToNpcInRoom("QUEEN");
+			} else if (actionTag === "TALK_ROOK") {
+				handleTalkToNpcInRoom("ROOK");
+			} else if (
+				actionTag === "JOIN_CAFETERIA_QUEUE" ||
+				actionTag === "CAFETERIA_QUEUE"
+			) {
+				handleJoinOrLeaveCafeteriaQueue();
+			} else if (actionTag === "CLEANER_COUNTER") {
+				const col = sim.academicColloquium;
+				if (col?.shirtState === "COFFEE_STAINED") {
+					handleDropOffShirtAtCleaner("EXPRESS_75_MIN");
+				} else if (
+					col?.activeDryCleaningTicket &&
+					!col.activeDryCleaningTicket.collected
+				) {
+					handlePickUpCleanedShirt();
+				} else {
+					handleBuyNewShirtAtHaberdashery();
+				}
+			} else if (actionTag === "TOGGLE_DRIVE_CAR") {
+				handleToggleDriveCar();
+			} else if (
+				actionTag === "BOARD_TRAM" ||
+				actionTag === "TRAM_STATION_KIOSK"
+			) {
+				handleOpenTransitModal();
+			} else if (actionTag === "HOME_WARDROBE") {
+				handleCommuteHomeForSpareShirt();
+			} else if (actionTag === "HOME_BED") {
+				handleSleepUntilNextMorning();
+			} else if (actionTag === "BUY_HABERDASHERY_SHIRT") {
+				handleBuyNewShirtAtHaberdashery();
+			} else if (actionTag === "BUY_TOBY_CROISSANT") {
+				handleBuyTobyCroissant();
+			} else if (actionTag === "EAT_HOT_PLATE_SOUP") {
+				handleEatHotPlateSoup();
+			}
+		};
+
+		const tryResolvePendingUniInteract = () => {
+			const up = sim.uniPlayer;
+			const tag = up.pendingUniInteract;
+			if (!tag) return;
+			const ix = up.pendingInteractX;
+			const iz = up.pendingInteractZ;
+			if (typeof ix === "number" && typeof iz === "number") {
+				if (Math.hypot(up.worldX - ix, up.worldZ - iz) > 1.85) return;
+			} else if (up.targetX !== null || up.targetZ !== null) {
+				return;
+			}
+			clearPendingUniInteract(up);
+			resolveUniInteractTag(tag);
+		};
+
 		const onPointerUp = (ev: PointerEvent) => {
 			sim.mouseLook.isDragging = false;
 			const dragDist = Math.hypot(
@@ -542,7 +615,7 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 				ev.clientY - pointerDownPos.y,
 			);
 
-			// In ACADEMIC_SIMULATOR, clicking on a 3D prop/NPC interacts with it directly, or clicking the floor walks Dr. Pawn there!
+			// In ACADEMIC_SIMULATOR, clicking a prop walks there first; interaction fires on arrival.
 			if (
 				sim.phase === "ACADEMIC_SIMULATOR" &&
 				sim.academicColloquium?.stage === "UNIVERSITY_SIMULATOR" &&
@@ -563,63 +636,22 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 					while (cur && cur !== universityOfficeRig.rootGroup) {
 						const actionTag = cur.userData?.uniInteract as string | undefined;
 						if (actionTag) {
-							if (
-								typeof cur.userData.interactX === "number" &&
+							const ix =
+								typeof cur.userData.interactX === "number"
+									? cur.userData.interactX
+									: hit.point.x;
+							const iz =
 								typeof cur.userData.interactZ === "number"
-							) {
-								sim.uniPlayer.targetX = cur.userData.interactX;
-								sim.uniPlayer.targetZ = cur.userData.interactZ;
-							}
-							if (actionTag === "OPEN_CHALKBOARD") {
-								handleSetDrawerTab("CHALKBOARD_PROOF");
-							} else if (actionTag === "OPEN_PINE_MAIL") {
-								handleSetDrawerTab("PINE_MAIL");
-							} else if (actionTag === "OPEN_FINANCE_LEDGER") {
-								handleSetDrawerTab("FINANCE_LEDGER");
-							} else if (actionTag === "KICK_COFFEE_MACHINE") {
-								handleKickCoffeeMachine();
-							} else if (actionTag === "TALK_TOBY") {
-								handleTalkToNpcInRoom("TOBY");
-							} else if (actionTag === "TALK_BISHOP") {
-								handleTalkToNpcInRoom("BISHOP");
-							} else if (actionTag === "TALK_QUEEN") {
-								handleTalkToNpcInRoom("QUEEN");
-							} else if (actionTag === "TALK_ROOK") {
-								handleTalkToNpcInRoom("ROOK");
-							} else if (
-								actionTag === "JOIN_CAFETERIA_QUEUE" ||
-								actionTag === "CAFETERIA_QUEUE"
-							) {
-								handleJoinOrLeaveCafeteriaQueue();
-							} else if (actionTag === "CLEANER_COUNTER") {
-								const col = sim.academicColloquium;
-								if (col.shirtState === "COFFEE_STAINED") {
-									handleDropOffShirtAtCleaner("EXPRESS_75_MIN");
-								} else if (
-									col.activeDryCleaningTicket &&
-									!col.activeDryCleaningTicket.collected
-								) {
-									handlePickUpCleanedShirt();
-								} else {
-									handleBuyNewShirtAtHaberdashery();
-								}
-							} else if (actionTag === "TOGGLE_DRIVE_CAR") {
-								handleToggleDriveCar();
-							} else if (
-								actionTag === "BOARD_TRAM" ||
-								actionTag === "TRAM_STATION_KIOSK"
-							) {
-								handleOpenTransitModal();
-							} else if (actionTag === "HOME_WARDROBE") {
-								handleCommuteHomeForSpareShirt();
-							} else if (actionTag === "HOME_BED") {
-								handleSleepUntilNextMorning();
-							} else if (actionTag === "BUY_HABERDASHERY_SHIRT") {
-								handleBuyNewShirtAtHaberdashery();
-							} else if (actionTag === "BUY_TOBY_CROISSANT") {
-								handleBuyTobyCroissant();
-							} else if (actionTag === "EAT_HOT_PLATE_SOUP") {
-								handleEatHotPlateSoup();
+									? cur.userData.interactZ
+									: hit.point.z;
+							const dist = Math.hypot(
+								sim.uniPlayer.worldX - ix,
+								sim.uniPlayer.worldZ - iz,
+							);
+							if (dist <= 1.85) {
+								resolveUniInteractTag(actionTag);
+							} else {
+								queuePendingUniInteract(sim.uniPlayer, actionTag, ix, iz);
 							}
 							return;
 						}
@@ -633,6 +665,7 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 				);
 				if (floorHits.length > 0) {
 					const pt = floorHits[0].point;
+					clearPendingUniInteract(sim.uniPlayer);
 					sim.uniPlayer.targetX = THREE.MathUtils.clamp(pt.x, -92, 92);
 					sim.uniPlayer.targetZ = THREE.MathUtils.clamp(pt.z, -36, 86);
 				}
@@ -1147,6 +1180,79 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 					);
 					syncAppointmentsWithClock(col, false);
 
+					// Embodied tram ride — lerp across the city; clock accrues during the trip.
+					if (sim.uniTransit?.isRiding && sim.uniTransit.destinationStationId) {
+						const st = TRAM_STATIONS.find(
+							(s) => s.id === sim.uniTransit.destinationStationId,
+						);
+						if (st) {
+							const dur = Math.max(4, sim.uniTransit.rideDurationSec || 12);
+							const prevT = sim.uniTransit.transitTimer;
+							sim.uniTransit.transitTimer = Math.min(dur, prevT + rawDelta);
+							const t = sim.uniTransit.transitTimer / dur;
+							const destX =
+								st.x + Math.sin(st.platformAngle + Math.PI / 2) * 2.8;
+							const destZ =
+								st.z + Math.cos(st.platformAngle + Math.PI / 2) * 2.8;
+							up.worldX = THREE.MathUtils.lerp(
+								sim.uniTransit.startX,
+								destX,
+								t,
+							);
+							up.worldZ = THREE.MathUtils.lerp(
+								sim.uniTransit.startZ,
+								destZ,
+								t,
+							);
+							up.yaw = Math.atan2(destX - sim.uniTransit.startX, destZ - sim.uniTransit.startZ);
+							up.targetX = null;
+							up.targetZ = null;
+							col.isRidingTram = true;
+							col.timeOfDayMinutes = Math.min(
+								22 * 60 + 30,
+								col.timeOfDayMinutes + rawDelta * 5.5,
+							);
+							syncAppointmentsWithClock(col, false);
+							playerIsMoving = true;
+
+							if (sim.uniTransit.transitTimer >= dur) {
+								sim.uniTransit.isRiding = false;
+								sim.uniTransit.destinationStationId = null;
+								sim.uniTransit.transitTimer = 0;
+								col.isRidingTram = false;
+								up.worldX = destX;
+								up.worldZ = destZ;
+								col.energyLevel = Math.min(100, col.energyLevel + 6);
+								if (st.id === "PEANO_QUAD") {
+									col.currentRoom = "CAMPUS_QUAD";
+								} else if (st.id === "DOWNTOWN_PERSEUS") {
+									col.currentRoom = "DRY_CLEANER";
+								} else if (st.id === "KEPLER_SUBURBS") {
+									col.currentRoom = "CITY_STREETS";
+									if (
+										col.tobyCroissantPurchased &&
+										(col.domesticArcStage === "CROISSANT_BOUGHT" ||
+											col.domesticArcStage === "ANNIVERSARY_WALK")
+									) {
+										col.domesticArcStage = "ANNIVERSARY_WALK";
+										up.targetX = UNIVERSITY_ROOM_CENTERS.PAWN_HOUSE.x;
+										up.targetZ = UNIVERSITY_ROOM_CENTERS.PAWN_HOUSE.z;
+									}
+								} else {
+									col.currentRoom = "CAMPUS_QUAD";
+								}
+								col.colloquiumLog = [
+									`🚈 [${formatSimClock(col.timeOfDayMinutes)}] Arrived ${st.name}. Walk the last block on foot.`,
+									...col.colloquiumLog.slice(0, 9),
+								];
+								hudSyncAccumulator = 1.0;
+							}
+						} else {
+							sim.uniTransit.isRiding = false;
+							col.isRidingTram = false;
+						}
+					}
+
 					// Step Live Cafeteria Coffee Queue (Finite Cashier Service Rate!)
 					if (
 						col.cafeteriaQueuePosition !== null &&
@@ -1296,7 +1402,7 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 									col.carSpeedMph = 0;
 								}
 							}
-						} else {
+						} else if (!sim.uniTransit?.isRiding && !col.isRidingTram) {
 							// 1b. WALKING ON FOOT (Camera-Relative WASD / Arrow Keys or Click Steering)
 							let inputFwd = 0;
 							let inputRight = 0;
@@ -1310,6 +1416,7 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 							if (Math.hypot(inputFwd, inputRight) > 0.05) {
 								up.targetX = null;
 								up.targetZ = null;
+								clearPendingUniInteract(up);
 								// Transform WASD relative to current mouse-look camera yaw!
 								const camYaw = sim.mouseLook.uniCamYaw;
 								const fwdX = -Math.sin(camYaw);
@@ -1328,7 +1435,10 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 								} else {
 									up.targetX = null;
 									up.targetZ = null;
+									tryResolvePendingUniInteract();
 								}
+							} else {
+								tryResolvePendingUniInteract();
 							}
 
 							const len = Math.hypot(moveX, moveZ);

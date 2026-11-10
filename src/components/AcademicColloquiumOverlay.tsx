@@ -1465,13 +1465,6 @@ export const AcademicColloquiumOverlay: React.FC<
 											/>
 										</label>
 									</div>
-									<button
-										type="button"
-										onClick={() => onAdjustChshAngles(0, Math.PI / 4)}
-										className="px-3 py-1.5 rounded-lg bg-fuchsia-500/20 border border-fuchsia-400/50 text-fuchsia-200 font-mono text-[10px] font-bold cursor-pointer"
-									>
-										Set Optimal Tsirelson Angles (A=0, B=π/4)
-									</button>
 									{colloquium.proofWorkbench.monogamyLemmaAnnotated && (
 										<div className="text-[11px] font-mono text-pink-300 border border-pink-500/30 rounded-lg p-2 bg-pink-950/40">
 											✓ CKW Monogamy annotated: τ(A|B)+τ(A|C) ≤ τ(A|BC) —
@@ -1785,14 +1778,22 @@ export const AcademicColloquiumOverlay: React.FC<
 														: "Go Home for Spare Shirt"}
 												</button>
 											)}
-										<button
-											type="button"
-											onClick={onSleepUntilNextMorning}
-											className="px-3 py-1 bg-indigo-500/30 hover:bg-indigo-500/45 border border-indigo-400/50 text-indigo-100 font-mono text-[11px] font-bold rounded-lg cursor-pointer flex items-center gap-1"
-										>
-											<Moon className="w-3 h-3" />
-											<span>Sleep Until Next Morning (08:30)</span>
-										</button>
+										{((colloquium.currentRoom === "PAWN_HOUSE" &&
+											colloquium.homeAccess === "OWNED") ||
+											(colloquium.currentRoom === "OFFICE_4B" &&
+												(colloquium.livingInOffice4B ||
+													colloquium.domesticArcStage === "CROISSANT_BOUGHT" ||
+													colloquium.domesticArcStage ===
+														"ANNIVERSARY_WALK"))) && (
+											<button
+												type="button"
+												onClick={onSleepUntilNextMorning}
+												className="px-3 py-1 bg-indigo-500/30 hover:bg-indigo-500/45 border border-indigo-400/50 text-indigo-100 font-mono text-[11px] font-bold rounded-lg cursor-pointer flex items-center gap-1"
+											>
+												<Moon className="w-3 h-3" />
+												<span>Sleep Until Next Morning (08:30)</span>
+											</button>
+										)}
 									</div>
 								</div>
 
@@ -2481,15 +2482,6 @@ export const AcademicColloquiumOverlay: React.FC<
 								{label}
 							</button>
 						))}
-						<button
-							type="button"
-							onClick={onSleepUntilNextMorning}
-							className="px-2 py-1 rounded-lg font-mono text-[10px] text-indigo-300 hover:bg-indigo-950/80 border border-indigo-500/30 cursor-pointer flex items-center gap-1 ml-0.5"
-							title="End day & sleep until 08:30 tomorrow morning"
-						>
-							<Moon className="w-3 h-3" />
-							<span>Sleep</span>
-						</button>
 					</div>
 				</div>
 			</div>
