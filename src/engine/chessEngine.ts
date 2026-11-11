@@ -660,10 +660,9 @@ export function getValidMovesForPiece(
 	}
 
 	// 5. SENTIENT MATHEMATICAL THEOREM (`piece.isSentientTheorem && piece.theoremStatus === 'PUBLISHED'`):
-	// When a Pawn merges with its alternate-timeline self(s), it first formulates an UNPUBLISHED_DRAFT
-	// and all pieces become Professors for Peer Review. ONLY once the theorem is PUBLISHED does it unlock
-	// "CHECKMATING YESTERDAY" — striking the past spacetime coordinates (t - 1, t - 2, or Turn 1 origin)
-	// of the Enemy King & Commanders to retroactively refute their existence!
+	// Publication prints whatever manuscript Dr. Pawn actually established.
+	// Checkmate Yesterday exists only when the monarch lemma holds:
+	// the orthogonal sector is continuous, the crown sector is not, and the Jacobian has no real pole.
 	if (piece.isSentientTheorem && piece.theoremStatus === "PUBLISHED") {
 		// A. Transfinite Prime-Number Vectors ((±2, ±2), (±3, 0), (0, ±3), (±3, ±3))
 		const theoremVectors = [
@@ -704,7 +703,8 @@ export function getValidMovesForPiece(
 		}
 
 		// B. RETROACTIVE "CHECKMATE YESTERDAY" VECTORS:
-		// Target the Yesterday square (`history[0]` or `history[length - 2]`) of the Enemy King & high-value Enemy Pieces!
+		// Only if the published manuscript established that no monarch is continuous through the cut.
+		if (piece.monarchLemmaProved) {
 		const enemies = pieces
 			.filter((e) => e.faction !== faction && e.hp > 0)
 			.sort(
@@ -763,6 +763,7 @@ export function getValidMovesForPiece(
 						? `⊢ Q.E.D. CHECKMATE YESTERDAY: Refute ${ARCHETYPES[enemy.type].chessName} at Turn ${pastTurnLabel} (${sqName})!`
 						: `⊢ Retroactive Proof: Refute Yesterday's ${ARCHETYPES[enemy.type].chessName} at ${sqName} (Turn ${pastTurnLabel})!`,
 			});
+		}
 		}
 	}
 

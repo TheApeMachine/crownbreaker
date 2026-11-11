@@ -1122,13 +1122,14 @@ export function stepCombatSimulation(
 							? atk.activeComboRecipe.finisherMultiplier
 							: 1.0;
 					const chshS = atk.piece.publishedChshS ?? 0;
-					const tsirelsonAssist =
-						Boolean(atk.entangledPartnerName) && chshS >= 2 * Math.SQRT2 - 0.05;
+					const tsirelson = 2 * Math.SQRT2;
+					const reachedTsirelson =
+						Boolean(atk.entangledPartnerName) && chshS >= tsirelson - 1e-6;
 					const entangledBonus =
 						isFinisher && atk.entangledPartnerName
-							? tsirelsonAssist
-								? 14
-								: 7
+							? Math.round(
+									(14 * Math.max(0, Math.min(tsirelson, chshS))) / tsirelson,
+								)
 							: 0;
 					const synodStacks =
 						(atk.piece.synodStacks || 0) + (atk.piece.isChronocrator ? 1 : 0);
@@ -1165,7 +1166,7 @@ export function stepCombatSimulation(
 									: baseMove.launchY,
 							unblockable: Boolean(
 								(atk.piece.isSentientTheorem && isFinisher) ||
-									(tsirelsonAssist && isFinisher),
+									(reachedTsirelson && isFinisher),
 							),
 							effect: isFinisher ? atk.activeComboRecipe?.effect : undefined,
 							isSpecial: false,
@@ -1218,15 +1219,11 @@ export function stepCombatSimulation(
 						});
 					} else if (entangledBonus > 0 && atk.entangledPartnerName) {
 						onCallout({
-							text: tsirelsonAssist
-								? `|Φ⁺⟩ TSIRELSON BREACH ASSIST: +${entangledBonus} DMG!`
-								: `|Φ⁺⟩ ENTANGLED ASSIST: +${entangledBonus} DMG!`,
-							subtext: tsirelsonAssist
-								? `CHSH S≈2√2 · CLASSICAL LOCALITY TORN · ${atk.entangledPartnerName.toUpperCase()}`
-								: `BELL RESONANCE (S≤2 CLASSICAL) · ${atk.entangledPartnerName.toUpperCase()}`,
+							text: `|Φ⁺⟩ ASSIST S=${chshS.toFixed(3)}: +${entangledBonus} DMG!`,
+							subtext: `${atk.entangledPartnerName.toUpperCase()} · CLASSICAL 2 · TSIRELSON ${tsirelson.toFixed(3)}`,
 							x: def.x,
 							y: 2.35,
-							color: tsirelsonAssist ? "#f472b6" : "#38bdf8",
+							color: reachedTsirelson ? "#f472b6" : "#38bdf8",
 						});
 					}
 				}

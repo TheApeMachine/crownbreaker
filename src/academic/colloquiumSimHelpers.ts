@@ -1,4 +1,5 @@
 import { soundEngine } from "../audio/soundEngine";
+import { refreshManuscript } from "./lemmaMathematics";
 import {
 	triggerCoffeeSpill3DSplash,
 	type UniversityOfficeRig,
@@ -6,7 +7,10 @@ import {
 import type {
 	AcademicColloquiumState,
 	FinancialLedgerCategory,
+	UniversityRoomId,
 } from "../types/game";
+
+export { computeChshS } from "./lemmaMathematics";
 
 /** Stable day labels for academic ledger / clock helpers. */
 export const DAY_NAMES_LIST = [
@@ -101,38 +105,34 @@ export function recordDepartmentalTransaction(
 }
 
 export function recomputeProofIntegrity(col: AcademicColloquiumState) {
-	let score = 18;
-	if (col.proofWorkbench.boundaryGaugeVerified) score += 22;
-	if (col.proofWorkbench.jacobianSignFlipped) score += 18;
-	if (col.proofWorkbench.chiralLabDataAttached) score += 16;
-	if (col.proofWorkbench.hermitianBoundaryBalanced) score += 14;
-	if (col.proofWorkbench.chshS >= 2 * Math.SQRT2 - 0.05) score += 12;
-	if (col.proofWorkbench.monogamyLemmaAnnotated) score += 8;
-	col.centralLemmaIntegrity = Math.min(100, score);
-	col.rigorScore = col.centralLemmaIntegrity;
-	const hermBonus = col.proofWorkbench.hermitianBoundaryBalanced ? 0.18 : 0;
-	const chshBonus = Math.min(
-		0.2,
-		Math.max(0, (col.proofWorkbench.chshS - 2) / 5),
-	);
-	col.proofWorkbench.purityEstimate = Number(
-		Math.min(
-			1,
-			0.55 +
-				hermBonus +
-				chshBonus +
-				(col.proofWorkbench.jacobianSignFlipped ? 0.07 : 0),
-		).toFixed(3),
-	);
+	refreshManuscript(col);
 }
 
-export function computeChshS(angleA: number, angleB: number): number {
-	const a = angleA;
-	const ap = angleA + Math.PI / 2;
-	const b = angleB;
-	const bp = angleB - Math.PI / 2;
-	const E = (x: number, y: number) => Math.cos(x - y);
-	return Math.abs(E(a, b) + E(a, bp) + E(ap, b) - E(ap, bp));
+/**
+ * A lived moment can leave a thought in the day's log once.
+ * It does not solve an equation, and it is not recorded as a collectible.
+ */
+export function noteLivedSpark(
+	col: AcademicColloquiumState,
+	id: string,
+	line: string,
+) {
+	if (!col.notedSparkIds) col.notedSparkIds = [];
+	if (col.notedSparkIds.includes(id)) return;
+	col.notedSparkIds = [...col.notedSparkIds, id];
+	col.colloquiumLog = [line, ...col.colloquiumLog.slice(0, 9)];
+}
+
+export function noteArrivedRoom(
+	col: AcademicColloquiumState,
+	room: UniversityRoomId,
+) {
+	if (room !== "CITY_STREETS") return;
+	noteLivedSpark(
+		col,
+		"gutter_rain",
+		`🌧️ [${formatSimClock(col.timeOfDayMinutes)}] Rain in the gutter splits around your shoe and comes back together. The two halves don't remember an order.`,
+	);
 }
 
 export function syncAppointmentsWithClock(
@@ -167,7 +167,7 @@ export function syncAppointmentsWithClock(
 					dateLabel: `${DAY_NAMES_LIST[col.dayIndex % 5]} ${formatSimClock(Math.max(col.timeOfDayMinutes, apt.endMinutes + 5))}`,
 					category: "GRAD_STUDENT" as const,
 					unread: true,
-					body: `Dr. Pawn,\n\nI waited by the chalkboard in Room 4B from 10:00 to 10:45 with the off-diagonal Jacobian pages, and you never showed up.\n\nLook, I know you're stressed about tenure and the 14:30 review, but Lemma 3.2 still has a −κ sign error. Come to the chalkboard in Room 4B when you actually have time.\n\n— Toby`,
+					body: `Dr. Pawn,\n\nI waited by the chalkboard in Room 4B from 10:00 to 10:45 with the off-diagonal Jacobian pages, and you never showed up.\n\nLook, I know you're stressed about tenure and the 14:30 review, but when I expand det(λI − J) = λ² − κ₁₂κ₂₁ the polynomial still has real roots. The two corners are not the same entry. Come to the chalkboard in Room 4B when you actually have time.\n\n— Toby`,
 				};
 				col.inbox = [tobyMissedEmail, ...col.inbox];
 			} else if (apt.id === "appt_tue_bishop") {
@@ -318,6 +318,11 @@ export function tryResolveAnniversaryCollapse(
 			: "Never made it home. Note and Vance email waiting. Keys dead.",
 		...col.npcMemoryNotes.slice(0, 5),
 	];
+	noteLivedSpark(
+		col,
+		"anniversary_cut",
+		`The casserole went on without you. Something on the other side of the evening stayed continuous, and it was not the person who was supposed to be there.`,
+	);
 	col.colloquiumLog = [
 		opts.arrivedAtHouse
 			? `🕯️ [${formatSimClock(col.timeOfDayMinutes)}] 742 Retrocausal Terrace — porch light off.`
@@ -352,6 +357,11 @@ export function triggerCafeteriaCollisionSpill(
 		`A distracted undergrad collided with you outside the Cafeteria! Your only clean white dress shirt is drenched in dark espresso before your 14:30 review.`,
 		...col.npcMemoryNotes.slice(0, 5),
 	];
+	noteLivedSpark(
+		col,
+		"coffee_books",
+		`For a moment the books and the coffee were one event. Afterwards neither path was the one you had been on.`,
+	);
 	col.colloquiumLog = [
 		`💥 [${formatSimClock(col.timeOfDayMinutes)}] CAFETERIA COLLISION! As you stepped away from the register carrying your $4.50 coffee, a distracted undergraduate carrying a stack of textbooks slammed straight into your chest!`,
 		`👔 Scalding dark espresso is now splattered across your only clean Oxford dress shirt — and your mandatory review with Prof. Bishop & Chairwoman Queen is at 14:30 in Seminar Room 204!`,

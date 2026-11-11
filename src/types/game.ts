@@ -123,9 +123,11 @@ export interface ChessPiece {
 	theoremAxiom?: string;
 	/** Publication status of the Sentient Mathematical Theorem ('UNPUBLISHED_DRAFT' during Peer Review -> 'PUBLISHED' once accepted) */
 	theoremStatus?: TheoremPublicationStatus;
-	/** Unlocked via deposition CKW epiphany — enables entanglement-swap Checkmate Yesterday */
+	/** True when the published manuscript established μ₋ = 1, μ₊ ≠ 1, and a nonsingular Jacobian. */
+	monarchLemmaProved?: boolean;
+	/** True when the manuscript's CKW tangles exclude the crown. Enables the entanglement-swap reading of Checkmate Yesterday. */
 	entanglementSwapUnlocked?: boolean;
-	/** Peak CHSH correlator achieved in Room 4B chalkboard (feeds combat assist scaling) */
+	/** CHSH correlator S written on the Room 4B chalkboard. Combat assist scales with this value. */
 	publishedChshS?: number;
 }
 
@@ -251,26 +253,36 @@ export interface UniversityAppointment {
 }
 
 export interface LemmaProofWorkbenchState {
-	boundaryGaugeChoice:
-		| "UNSELECTED"
-		| "DIRICHLET_CLAMP"
-		| "CHIRAL_ANTIPERIODIC"
-		| "TRUNCATED_PERTURBATIVE";
-	boundaryGaugeVerified: boolean;
-	jacobianSignFlipped: boolean; // False = defective -kappa, True = corrected +kappa anti-Hermitian adjoint
+	/** Coefficients in ψ(t₀−1) = (α I + β γ₅) ψ(t₀). */
+	boundaryAlpha: number;
+	boundaryBeta: number;
+	/** Off-diagonal Jacobian entries in units of κ. */
+	jacobianKappa12: number;
+	jacobianKappa21: number;
 	chiralLabDataAttached: boolean;
+	/** Measured chiral asymmetry A. Null until the night interferometer has been run. */
+	chiralLabAsymmetry: number | null;
 	rookCitationsAttached: boolean;
 	lastVerificationMessage: string;
-	/** Surface flux term κ_∂ balanced so ⟨φ|Hψ⟩ = ⟨Hφ|ψ⟩ on ∂M */
+	/** Derived: monarch absent, from the boundary coefficients. Not a player toggle. */
+	boundaryGaugeVerified: boolean;
+	/** Derived: λ² − κ₁₂κ₂₁ has no real root. */
+	jacobianNonsingular: boolean;
+	/** Derived: B†γ₅B = γ₅. */
 	hermitianBoundaryBalanced: boolean;
-	/** Tunable surface commutator offset (−1..+1); 0 is self-adjoint */
+	/** Derived: coefficient of I in B†γ₅B, which is 2αβ. */
 	surfaceCommutatorOffset: number;
-	/** CHSH correlator S; classical ≤2, Tsirelson ≤2√2 */
+	/** Derived CHSH correlator S. */
 	chshS: number;
-	measurementAngleA: number; // radians
-	measurementAngleB: number; // radians
-	/** Tr(ρ²) purity estimate 0..1; mixed states muddy combat frame data */
+	measurementAngleA: number;
+	measurementAngleB: number;
+	/** Derived Tr(ρ²) from the boundary defect. */
 	purityEstimate: number;
+	/** Player-written CKW tangles. Null means the relation is not on the board. */
+	tangleQueen: number | null;
+	tangleCrown: number | null;
+	tangleJoint: number | null;
+	/** Derived: the written tangles exclude the crown. */
 	monogamyLemmaAnnotated: boolean;
 	courseReaderOpen: boolean;
 }
@@ -388,6 +400,8 @@ export interface AcademicColloquiumState {
 	maritalAssetGrid: MaritalAssetGridState;
 	entanglementSwapUnlocked: boolean;
 	depositionEpiphanySeen: boolean;
+	/** Lived moments that have already occurred. Never shown as a collection. */
+	notedSparkIds: string[];
 	legalTabUnlocked: boolean;
 
 	// Real Personal & Departmental Accounting
@@ -413,7 +427,8 @@ export interface AcademicColloquiumState {
 	appointments: UniversityAppointment[];
 
 	// Real Mathematical Proof Workbench & Journal Submissions
-	centralLemmaIntegrity: number; // Computed from proofWorkbench progress (18% -> 48% -> 78% -> 100%)
+	/** Legacy field. The manuscript is the coefficients, not this number. */
+	centralLemmaIntegrity: number;
 	proofWorkbench: LemmaProofWorkbenchState;
 	bishopLabAccessGranted: boolean;
 	bishopSuspectedWithholding: boolean;

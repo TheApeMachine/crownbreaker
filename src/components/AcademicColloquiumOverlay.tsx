@@ -18,6 +18,22 @@ import {
 	X,
 } from "lucide-react";
 import React from "react";
+import {
+	CHIRAL_LAB_ASYMMETRY,
+	CHIRAL_LAB_SIGMA,
+	TSIRELSON_BOUND,
+	chshTerms,
+	describeBoundary,
+	describeJacobian,
+	describeMonogamy,
+	evaluateBoundary,
+	evaluateJacobian,
+	evaluateMonogamy,
+	formatReal,
+	parseRealExpression,
+	predictedChiralAsymmetry,
+	refreshManuscript,
+} from "../academic/lemmaMathematics";
 import { formatSquareName } from "../engine/chessEngine";
 import { UNIVERSITY_ROOM_CENTERS } from "../three/universityOfficeBuilder";
 import type {
@@ -167,7 +183,7 @@ export function createInitialAcademicColloquiumState(
 			dateLabel: "Tuesday · 08:02 AM",
 			category: "GRAD_STUDENT",
 			unread: true,
-			body: `Dr. Pawn,\n\nI'm waiting for you in Room 4B! Remember we scheduled our meeting for 10:00 – 10:45 AM today to go over Central Lemma 3.2.\n\nI found a serious problem in "On the Nonexistence of Monarchs in Retrocausal Systems":\n1. The surface commutator [∂_t, H_chiral] doesn't vanish under a naive Dirichlet gauge.\n2. There is a −κ sign error in the off-diagonal Retrocausal Jacobian.\n\nAlso, the 1987 coffee machine in our office is still dead. If you walk down the hall to the Lagrange Point Cafeteria for coffee, watch out for the undergraduates rushing to their midterms!\n\nP.S. The pastry case has almond croissants. I have not eaten since 11 PM.\n\n— Toby`,
+			body: `Dr. Pawn,\n\nI'm waiting for you in Room 4B! Remember we scheduled our meeting for 10:00 – 10:45 AM today to go over Central Lemma 3.2.\n\nI found a serious problem in "On the Nonexistence of Monarchs in Retrocausal Systems":\n1. Under the boundary map currently on the board, both sectors of the spinor are annihilated. That empties the past. It does not say anything about a monarch.\n2. I expanded det(λI − J) = λ² − κ₁₂κ₂₁ and there is a real root. I wrote −κ in both off-diagonal corners of my own thesis, and I am no longer sure which corner belongs to which paper.\n\nAlso, the 1987 coffee machine in our office is still dead. If you walk down the hall to the Lagrange Point Cafeteria for coffee, watch out for the undergraduates rushing to their midterms!\n\nP.S. The pastry case has almond croissants. I have not eaten since 11 PM.\n\n— Toby`,
 		},
 		{
 			id: "email_mortgage_due",
@@ -234,7 +250,7 @@ export function createInitialAcademicColloquiumState(
 
 	// Start already inside Room 4B — no essay gate. The rain, dead coffee machine,
 	// mortgage HUD, and Toby waiting at 10:00 are the exposition.
-	return {
+	const state: AcademicColloquiumState = {
 		active: true,
 		stage: "UNIVERSITY_SIMULATOR",
 		candidatePieceId: candidatePiece.id,
@@ -242,7 +258,7 @@ export function createInitialAcademicColloquiumState(
 		coAuthorTimelineCode,
 		manuscriptTitle: "On the Nonexistence of Monarchs in Retrocausal Systems",
 		manuscriptVersion: "UGA-Preprint-Yr1.tex",
-		selectedAxiomMethodology: "Chiral Anti-Periodic Boundary Gauge (Lemma 3.2)",
+		selectedAxiomMethodology: "Boundary map on ∂M(t₀−1)",
 		rigorScore: 18,
 		citationsCollected: 0,
 		requiredCitations: 3,
@@ -348,6 +364,7 @@ export function createInitialAcademicColloquiumState(
 		},
 		entanglementSwapUnlocked: false,
 		depositionEpiphanySeen: false,
+		notedSparkIds: [],
 		legalTabUnlocked: false,
 
 		annualSalary: 48200,
@@ -402,7 +419,7 @@ export function createInitialAcademicColloquiumState(
 		bishopRelationship: 34,
 		npcMemoryNotes: [
 			"TODAY IS YOUR SEVENTH WEDDING ANNIVERSARY. Dinner at 19:30 at 742 Retrocausal Terrace. She already bought a candle.",
-			"Toby (Grad Student): Anxious to show you the Jacobian sign error in Room 4B between 10:00 and 10:45. Has not eaten.",
+			"Toby (Grad Student): Anxious about the Jacobian pages in Room 4B between 10:00 and 10:45. Has not eaten.",
 			"Prof. Bishop: Expects you in Seminar Room 204 at 14:30 sharp in clean professional attire with a reconciled grant budget.",
 			"Prof. Rook: Recently awarded full tenure after publishing the same rectilinear file paper three times.",
 		],
@@ -441,19 +458,26 @@ export function createInitialAcademicColloquiumState(
 
 		centralLemmaIntegrity: 18,
 		proofWorkbench: {
-			boundaryGaugeChoice: "UNSELECTED",
-			boundaryGaugeVerified: false,
-			jacobianSignFlipped: false,
+			boundaryAlpha: 0,
+			boundaryBeta: 0,
+			jacobianKappa12: -1,
+			jacobianKappa21: -1,
 			chiralLabDataAttached: false,
+			chiralLabAsymmetry: null,
 			rookCitationsAttached: false,
 			lastVerificationMessage:
-				"Unverified: Boundary commutator [∂_t, H_chiral] diverges at t₀ − 1 and off-diagonal Jacobian has a −κ sign error.",
+				"The draft still annihilates both sectors, and λ² − κ₁₂κ₂₁ has a real root.",
+			boundaryGaugeVerified: false,
+			jacobianNonsingular: false,
 			hermitianBoundaryBalanced: false,
-			surfaceCommutatorOffset: -0.65,
-			chshS: 1.42,
+			surfaceCommutatorOffset: 0,
+			chshS: 0,
 			measurementAngleA: 0,
 			measurementAngleB: Math.PI / 8,
-			purityEstimate: 0.72,
+			purityEstimate: 0.5,
+			tangleQueen: null,
+			tangleCrown: null,
+			tangleJoint: null,
 			monogamyLemmaAnnotated: false,
 			courseReaderOpen: false,
 		},
@@ -468,6 +492,68 @@ export function createInitialAcademicColloquiumState(
 		inbox: initialInbox,
 		realityShatterProgressSec: 0,
 	};
+	refreshManuscript(state);
+	return state;
+}
+
+function ChalkField({
+	label,
+	hint,
+	committed,
+	onCommit,
+}: {
+	label: string;
+	hint?: string;
+	committed: number | null;
+	onCommit: (value: number | null) => void;
+}) {
+	const [draft, setDraft] = React.useState(
+		committed === null ? "" : formatReal(committed),
+	);
+	const focused = React.useRef(false);
+	React.useEffect(() => {
+		if (focused.current) return;
+		setDraft(committed === null ? "" : formatReal(committed));
+	}, [committed]);
+
+	const commit = () => {
+		const trimmed = draft.trim();
+		if (trimmed === "") {
+			if (committed !== null) onCommit(null);
+			return;
+		}
+		const parsed = parseRealExpression(trimmed);
+		if (parsed === null) return;
+		if (committed !== null && Math.abs(parsed - committed) < 5e-5) return;
+		onCommit(parsed);
+	};
+
+	return (
+		<label className="block text-[10px] font-mono text-slate-400 space-y-1">
+			<span className="text-slate-200">{label}</span>
+			{hint ? <span className="block text-slate-500">{hint}</span> : null}
+			<input
+				value={draft}
+				onChange={(e) => setDraft(e.target.value)}
+				onFocus={() => {
+					focused.current = true;
+				}}
+				onBlur={() => {
+					focused.current = false;
+					commit();
+				}}
+				onKeyDown={(e) => {
+					if (e.key === "Enter") {
+						e.preventDefault();
+						commit();
+					}
+				}}
+				className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-100 font-mono"
+				spellCheck={false}
+				autoComplete="off"
+			/>
+		</label>
+	);
 }
 
 interface AcademicColloquiumOverlayProps {
@@ -501,13 +587,14 @@ interface AcademicColloquiumOverlayProps {
 	onBoardTransitToStation?: (stationId: string) => void;
 	onAttendScheduledMeetingInRoom: (appointmentId: string) => void;
 	onTalkToNpcInRoom: (npcId: "TOBY" | "BISHOP" | "QUEEN" | "ROOK") => void;
-	onSelectBoundaryGauge: (
-		gauge: "DIRICHLET_CLAMP" | "CHIRAL_ANTIPERIODIC" | "TRUNCATED_PERTURBATIVE",
+	onCommitBoundaryCoefficient: (which: "alpha" | "beta", value: number) => void;
+	onCommitJacobianEntry: (which: "k12" | "k21", value: number) => void;
+	onCommitTangle: (
+		which: "queen" | "crown" | "joint",
+		value: number | null,
 	) => void;
-	onToggleJacobianSign: () => void;
 	onRunChiralLabExperiment: () => void;
 	onToggleRookCitations: () => void;
-	onAdjustSurfaceCommutator: (offset: number) => void;
 	onAdjustChshAngles: (angleA: number, angleB: number) => void;
 	onToggleGrantLineItem: (lineId: string) => void;
 	onSubmitGrantBudgetProposal: () => void;
@@ -561,11 +648,11 @@ export const AcademicColloquiumOverlay: React.FC<
 	onBoardTransitToStation,
 	onAttendScheduledMeetingInRoom,
 	onTalkToNpcInRoom,
-	onSelectBoundaryGauge,
-	onToggleJacobianSign,
+	onCommitBoundaryCoefficient,
+	onCommitJacobianEntry,
+	onCommitTangle,
 	onRunChiralLabExperiment,
 	onToggleRookCitations,
-	onAdjustSurfaceCommutator,
 	onAdjustChshAngles,
 	onToggleGrantLineItem,
 	onSubmitGrantBudgetProposal,
@@ -594,6 +681,15 @@ export const AcademicColloquiumOverlay: React.FC<
 	onResetUniCamera,
 }) => {
 	const [dismissedLog, setDismissedLog] = React.useState<string | null>(null);
+	const wb = colloquium.proofWorkbench;
+	const boundaryReading = evaluateBoundary(wb.boundaryAlpha, wb.boundaryBeta);
+	const jacobianReading = evaluateJacobian(wb.jacobianKappa12, wb.jacobianKappa21);
+	const chshReading = chshTerms(wb.measurementAngleA, wb.measurementAngleB);
+	const monogamyReading = evaluateMonogamy(
+		wb.tangleQueen,
+		wb.tangleCrown,
+		wb.tangleJoint,
+	);
 
 	React.useEffect(() => {
 		if (colloquium.active && colloquium.stage === "WORLD_COLLAPSE_FADE") {
@@ -823,11 +919,10 @@ export const AcademicColloquiumOverlay: React.FC<
 							<Award className="w-6 h-6 text-amber-400 shrink-0" />
 						</div>
 						<p className="text-sm text-slate-200 leading-relaxed">
-							Manuscript accepted. The sleeping bag, Vance ledger, and empty lab
-							bench already say the rest.
+							Galactic Advances has printed the manuscript. The fee cleared.
 						</p>
 						<p className="mt-2 text-amber-200 font-semibold text-sm">
-							The theorem is real.
+							What the pages contain is what comes back with you.
 						</p>
 						<button
 							type="button"
@@ -841,7 +936,7 @@ export const AcademicColloquiumOverlay: React.FC<
 				</div>
 			)}
 
-			{/* Settlement deposition epiphany */}
+			{/* Settlement deposition — a napkin, not a solution */}
 			{colloquium.depositionModalOpen && (
 				<div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-lg grayscale-[0.35]">
 					<div className="max-w-xl w-full bg-[#0a0c12] border border-fuchsia-500/40 rounded-2xl p-6 text-slate-100 space-y-4 shadow-2xl">
@@ -850,27 +945,21 @@ export const AcademicColloquiumOverlay: React.FC<
 						</div>
 						<p className="text-sm text-slate-300 leading-relaxed">
 							Opposing counsel argues you were &ldquo;emotionally absent&rdquo;
-							and &ldquo;wedded to the retrocausal Jacobian.&rdquo; The electric
-							typewriter clicks. The screen desaturates.
+							and &ldquo;wedded to the manuscript.&rdquo; The electric
+							typewriter clicks.
 						</p>
 						<p className="text-sm text-fuchsia-100 leading-relaxed font-serif italic">
-							A system cannot be maximally entangled with two independent
-							observers simultaneously. Coffman–Kundu–Wootters: τ(A|B)+τ(A|C) ≤
-							τ(A|BC). The King wasn&apos;t shielded — he was maximally
-							entangled with his Queen. Force an entanglement swap on Turn 1 and
-							the crown decoheres.
-						</p>
-						<p className="text-xs text-slate-400">
-							Your marriage didn&apos;t fail because you were late. It failed
-							because a quantum state cannot obey three-party non-local
-							correlation.
+							Arthur Vance draws three boxes on a paper napkin: the condo, the
+							wagon, and the person who is still supposed to live in both. He
+							says a thing cannot be wholly in two of the boxes and still be
+							wholly in the third. He writes 0.2 hours on the timesheet.
 						</p>
 						<button
 							type="button"
 							onClick={onConfirmDepositionEpiphany}
 							className="w-full py-3 rounded-xl bg-fuchsia-500 hover:bg-fuchsia-400 text-slate-950 font-mono font-extrabold text-xs cursor-pointer"
 						>
-							Accept the Napkin · Unlock Entanglement Swap (−$52 recess)
+							Fold the napkin and sit back down
 						</button>
 					</div>
 				</div>
@@ -1032,7 +1121,7 @@ export const AcademicColloquiumOverlay: React.FC<
 						title="Open Chalkboard Mathematical Proof Workbench [1]"
 					>
 						<FlaskConical className="w-3.5 h-3.5" />
-						<span>Proof {colloquium.centralLemmaIntegrity}%</span>
+						<span>Chalkboard</span>
 					</button>
 
 					<button
@@ -1244,291 +1333,243 @@ export const AcademicColloquiumOverlay: React.FC<
 						{colloquium.activeDrawerTab === "CHALKBOARD_PROOF" && (
 							<div className="space-y-4">
 								<div className="bg-[#0D1F18] border border-emerald-500/40 rounded-xl p-3.5 font-mono text-xs text-emerald-100 space-y-1.5">
-									<div className="flex items-center justify-between">
-										<span className="text-[10px] text-emerald-300 uppercase font-bold">
-											MANUSCRIPT: &ldquo;{colloquium.manuscriptTitle}&rdquo;
-										</span>
-										<span className="text-xs font-extrabold text-emerald-300">
-											INTEGRITY: {colloquium.centralLemmaIntegrity}%
-										</span>
+									<div className="text-[10px] text-emerald-300 uppercase font-bold">
+										MANUSCRIPT: &ldquo;{colloquium.manuscriptTitle}&rdquo;
 									</div>
-									<div>{colloquium.proofWorkbench.lastVerificationMessage}</div>
-								</div>
-
-								{/* Task 1: Boundary Gauge Choice */}
-								<div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2">
-									<div className="flex items-center justify-between">
-										<span className="text-xs font-mono font-bold text-white">
-											1. Select Boundary Gauge Condition on ∂M_(t₀−1) (Takes
-											25m)
-										</span>
-										<span
-											className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-												colloquium.proofWorkbench.boundaryGaugeVerified
-													? "bg-emerald-500/20 text-emerald-300"
-													: "bg-rose-500/20 text-rose-300"
-											}`}
-										>
-											{colloquium.proofWorkbench.boundaryGaugeVerified
-												? "✓ VERIFIED"
-												: "DEFECTIVE"}
-										</span>
-									</div>
-									<p className="text-[11px] text-slate-400">
-										Reviewer #2 noted that the boundary commutator [∂_t,
-										H_chiral] diverges at t₀ − 1 unless the spinor boundary
-										condition is anti-symmetric.
+									<p className="text-[11px] text-emerald-50/90 leading-relaxed">
+										{wb.lastVerificationMessage}
 									</p>
-									<div className="grid grid-cols-1 gap-1.5 pt-1">
-										{(
-											[
-												[
-													"DIRICHLET_CLAMP",
-													"Option A: Naive Dirichlet Clamp ψ(t₀−1) = 0",
-													"Fails unitary flux conservation on open files (Reviewer #2 counterexample)",
-												],
-												[
-													"CHIRAL_ANTIPERIODIC",
-													"Option B: Chiral Anti-Periodic Gauge ψ(t₀−1) = −γ₅ψ(t₀)",
-													"Cancels the surface commutator exactly while preserving causal cone locality",
-												],
-												[
-													"TRUNCATED_PERTURBATIVE",
-													"Option C: 2nd-Order Truncated Taylor Series",
-													"Diverges for high-momentum retrocausal paths",
-												],
-											] as const
-										).map(([val, title, desc]) => (
-											<button
-												type="button"
-												key={val}
-												onClick={() => onSelectBoundaryGauge(val)}
-												className={`p-2.5 rounded-lg border text-left transition-colors cursor-pointer ${
-													colloquium.proofWorkbench.boundaryGaugeChoice === val
-														? val === "CHIRAL_ANTIPERIODIC"
-															? "bg-emerald-950/90 border-emerald-400 text-emerald-100"
-															: "bg-rose-950/90 border-rose-400 text-rose-100"
-														: "bg-slate-950/80 hover:bg-slate-800 border-slate-800 text-slate-300"
-												}`}
-											>
-												<div className="text-xs font-mono font-bold">
-													{title}
-												</div>
-												<div className="text-[10px] text-slate-400">{desc}</div>
-											</button>
-										))}
-									</div>
 								</div>
 
-								{/* Task 2: Retrocausal Jacobian Sign Flip */}
-								<div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between gap-3">
-									<div>
-										<div className="text-xs font-mono font-bold text-white">
-											2. Toby’s Anomaly: Off-Diagonal Retrocausal Jacobian Sign
-										</div>
-										<div className="text-[11px] text-slate-400 mt-0.5">
-											Current Matrix:{" "}
-											<code className="text-amber-300">
-												det [ ∂_t , −κ ;{" "}
-												{colloquium.proofWorkbench.jacobianSignFlipped
-													? "+κ"
-													: "−κ"}{" "}
-												, ∂_w ] ={" "}
-												{colloquium.proofWorkbench.jacobianSignFlipped
-													? "λ² + κ² > 0 (Strictly Bounded!)"
-													: "λ² − κ² = 0 (Singular Pole!)"}
-											</code>
-										</div>
+								<div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-3">
+									<div className="text-xs font-mono font-bold text-white">
+										Boundary map on ∂M(t₀−1)
 									</div>
-									<button
-										type="button"
-										onClick={onToggleJacobianSign}
-										className={`px-3.5 py-2 rounded-xl font-mono text-xs font-bold shrink-0 cursor-pointer ${
-											colloquium.proofWorkbench.jacobianSignFlipped
-												? "bg-emerald-500/25 border border-emerald-400 text-emerald-200"
-												: "bg-amber-400 hover:bg-amber-300 text-slate-950"
-										}`}
-									>
-										{colloquium.proofWorkbench.jacobianSignFlipped
-											? "✓ Adjoint +κ Applied"
-											: "Flip Sign to +κ (20m)"}
-									</button>
-								</div>
-
-								{/* Task 3: Hermitian Boundary Self-Adjoint Extension */}
-								<div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2">
-									<div className="flex items-center justify-between">
-										<span className="text-xs font-mono font-bold text-white">
-											3. Hermitian Boundary Flux on ∂M (Self-Adjoint Extension)
-										</span>
-										<span
-											className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-												colloquium.proofWorkbench.hermitianBoundaryBalanced
-													? "bg-emerald-500/20 text-emerald-300"
-													: "bg-rose-500/20 text-rose-300"
-											}`}
-										>
-											{colloquium.proofWorkbench.hermitianBoundaryBalanced
-												? "✓ ⟨φ|Hψ⟩ = ⟨Hφ|ψ⟩"
-												: "LEAKING"}
-										</span>
-									</div>
-									<p className="text-[11px] text-slate-400">
-										Reviewer #2: Hamiltonian Ĥ is not Hermitian on the boundary.
-										Tune the surface commutator offset until probability is
-										conserved (∑Pᵢ = 1) or the Pawn can be erased by
-										mathematical inconsistency.
+									<p className="text-[11px] text-slate-400 leading-relaxed">
+										ψ(t₀−1) = (α I + β γ₅) ψ(t₀). The crown sector, γ₅ = +1,
+										is multiplied by μ₊ = α + β. The orthogonal sector is
+										multiplied by μ₋ = α − β. A monarch continuous through
+										the cut would need μ₊ = 1. A world you can remember has
+										μ₋ = 1. The surface current is B†γ₅B = 2αβ I + (α² + β²)
+										γ₅, and it is conserved when that equals γ₅. Write the
+										coefficients and read what they do.
 									</p>
-									<input
-										type="range"
-										min={-100}
-										max={100}
-										value={Math.round(
-											colloquium.proofWorkbench.surfaceCommutatorOffset * 100,
-										)}
-										onChange={(e) =>
-											onAdjustSurfaceCommutator(Number(e.target.value) / 100)
-										}
-										className="w-full accent-emerald-400 cursor-pointer"
-									/>
-									<div className="flex justify-between text-[10px] font-mono text-slate-500">
-										<span>
-											κ_∂ ={" "}
-											{colloquium.proofWorkbench.surfaceCommutatorOffset.toFixed(
-												2,
-											)}
-										</span>
-										<span>
-											Purity Tr(ρ²) ≈{" "}
-											{colloquium.proofWorkbench.purityEstimate.toFixed(3)}
-										</span>
+									<div className="grid grid-cols-2 gap-3">
+										<ChalkField
+											label="α"
+											committed={wb.boundaryAlpha}
+											onCommit={(value) => {
+												if (value !== null)
+													onCommitBoundaryCoefficient("alpha", value);
+											}}
+										/>
+										<ChalkField
+											label="β"
+											committed={wb.boundaryBeta}
+											onCommit={(value) => {
+												if (value !== null)
+													onCommitBoundaryCoefficient("beta", value);
+											}}
+										/>
 									</div>
-								</div>
-
-								{/* Task 4: CHSH Entanglement Assist Tuning */}
-								<div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2">
-									<div className="flex items-center justify-between">
-										<span className="text-xs font-mono font-bold text-white">
-											4. CHSH Measurement Bases (Entangled Assist Bound)
-										</span>
-										<span
-											className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-												colloquium.proofWorkbench.chshS >= 2 * Math.SQRT2 - 0.05
-													? "bg-fuchsia-500/20 text-fuchsia-300"
-													: colloquium.proofWorkbench.chshS > 2
-														? "bg-amber-500/20 text-amber-300"
-														: "bg-slate-700 text-slate-300"
-											}`}
-										>
-											S = {colloquium.proofWorkbench.chshS.toFixed(3)}
-										</span>
-									</div>
-									<p className="text-[11px] text-slate-400">
-										Classical bound S ≤ 2 · Tsirelson S ≤ 2√2 ≈ 2.828. Align
-										angles to breach locality for guard-ignoring Bell assists.
+									<p className="text-[11px] font-mono text-amber-100 leading-relaxed">
+										μ₊ = {formatReal(boundaryReading.muPlus)} · μ₋ ={" "}
+										{formatReal(boundaryReading.muMinus)} · B†γ₅B ={" "}
+										{formatReal(boundaryReading.leakI)} I +{" "}
+										{formatReal(boundaryReading.weight5)} γ₅
 									</p>
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-										<label className="text-[10px] font-mono text-slate-400 space-y-1">
-											Angle A (rad)
-											<input
-												type="range"
-												min={0}
-												max={628}
-												value={Math.round(
-													colloquium.proofWorkbench.measurementAngleA * 100,
-												)}
-												onChange={(e) =>
-													onAdjustChshAngles(
-														Number(e.target.value) / 100,
-														colloquium.proofWorkbench.measurementAngleB,
-													)
-												}
-												className="w-full accent-sky-400 cursor-pointer"
-											/>
-										</label>
-										<label className="text-[10px] font-mono text-slate-400 space-y-1">
-											Angle B (rad)
-											<input
-												type="range"
-												min={0}
-												max={628}
-												value={Math.round(
-													colloquium.proofWorkbench.measurementAngleB * 100,
-												)}
-												onChange={(e) =>
-													onAdjustChshAngles(
-														colloquium.proofWorkbench.measurementAngleA,
-														Number(e.target.value) / 100,
-													)
-												}
-												className="w-full accent-sky-400 cursor-pointer"
-											/>
-										</label>
+									<p className="text-[11px] text-slate-300 leading-relaxed">
+										{describeBoundary(boundaryReading)}
+									</p>
+									<div className="text-[10px] font-mono text-slate-500">
+										Tr(ρ²) = {formatReal(wb.purityEstimate)}, from the
+										boundary defect.
 									</div>
-									{colloquium.proofWorkbench.monogamyLemmaAnnotated && (
-										<div className="text-[11px] font-mono text-pink-300 border border-pink-500/30 rounded-lg p-2 bg-pink-950/40">
-											✓ CKW Monogamy annotated: τ(A|B)+τ(A|C) ≤ τ(A|BC) —
-											entanglement swap unlocked for Checkmate Yesterday.
-										</div>
-									)}
 								</div>
 
-								{/* Task 5: Chiral Lab Verification & Mandatory Rook Citations */}
+								<div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-3">
+									<div className="text-xs font-mono font-bold text-white">
+										Retrocausal Jacobian
+									</div>
+									<p className="text-[11px] text-slate-400 leading-relaxed">
+										J = | 0 , κ₁₂ ; κ₂₁ , 0 |, entries in units of κ. Then
+										det(λI − J) = λ² − κ₁₂ κ₂₁. A real root is a pole on the
+										monarch worldline. The two corners are independent. Toby
+										copied −κ into both of them.
+									</p>
+									<div className="grid grid-cols-2 gap-3">
+										<ChalkField
+											label="κ₁₂"
+											committed={wb.jacobianKappa12}
+											onCommit={(value) => {
+												if (value !== null)
+													onCommitJacobianEntry("k12", value);
+											}}
+										/>
+										<ChalkField
+											label="κ₂₁"
+											committed={wb.jacobianKappa21}
+											onCommit={(value) => {
+												if (value !== null)
+													onCommitJacobianEntry("k21", value);
+											}}
+										/>
+									</div>
+									<p className="text-[11px] font-mono text-amber-100 leading-relaxed">
+										λ² − ({formatReal(jacobianReading.product)})
+										{jacobianReading.realRoots.length > 0
+											? ` · real roots ${jacobianReading.realRoots.map((r) => formatReal(r)).join(", ")}`
+											: " · no real roots"}
+									</p>
+									<p className="text-[11px] text-slate-300 leading-relaxed">
+										{describeJacobian(jacobianReading)}
+									</p>
+								</div>
+
+								<div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-3">
+									<div className="text-xs font-mono font-bold text-white">
+										CHSH correlator
+									</div>
+									<p className="text-[11px] text-slate-400 leading-relaxed">
+										a′ = a + π/2, b′ = b − π/2, E(x, y) = cos(x − y), S =
+										|E(a,b) + E(a,b′) + E(a′,b) − E(a′,b′)|. Classical
+										theories satisfy S ≤ 2. Quantum correlators satisfy S ≤
+										2√2 ≈ {formatReal(TSIRELSON_BOUND)}. The value you
+										compute is the value that publishes.
+									</p>
+									<div className="grid grid-cols-2 gap-3">
+										<ChalkField
+											label="Angle a"
+											hint="A number, or an expression such as pi/2."
+											committed={wb.measurementAngleA}
+											onCommit={(value) => {
+												if (value !== null)
+													onAdjustChshAngles(value, wb.measurementAngleB);
+											}}
+										/>
+										<ChalkField
+											label="Angle b"
+											hint="b′ is this angle minus π/2."
+											committed={wb.measurementAngleB}
+											onCommit={(value) => {
+												if (value !== null)
+													onAdjustChshAngles(wb.measurementAngleA, value);
+											}}
+										/>
+									</div>
+									<p className="text-[11px] font-mono text-amber-100 leading-relaxed">
+										E(a,b) = {formatReal(chshReading.eab)} · E(a,b′) ={" "}
+										{formatReal(chshReading.eabp)} · E(a′,b) ={" "}
+										{formatReal(chshReading.eapb)} · E(a′,b′) ={" "}
+										{formatReal(chshReading.eapbp)}
+									</p>
+									<p className="text-[11px] font-mono text-slate-200">
+										S = {formatReal(chshReading.s)}
+									</p>
+								</div>
+
+								<div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-3">
+									<div className="text-xs font-mono font-bold text-white">
+										Coffman–Kundu–Wootters
+									</div>
+									<p className="text-[11px] text-slate-400 leading-relaxed">
+										τ(K|Q) + τ(K|C) ≤ τ(K|QC) ≤ 1. Write the King–Queen
+										tangle, the King–Crown tangle, and the joint tangle. The
+										board reports whether the assignment is physical.
+									</p>
+									<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+										<ChalkField
+											label="τ(K|Q)"
+											committed={wb.tangleQueen}
+											onCommit={(value) => onCommitTangle("queen", value)}
+										/>
+										<ChalkField
+											label="τ(K|C)"
+											committed={wb.tangleCrown}
+											onCommit={(value) => onCommitTangle("crown", value)}
+										/>
+										<ChalkField
+											label="τ(K|QC)"
+											committed={wb.tangleJoint}
+											onCommit={(value) => onCommitTangle("joint", value)}
+										/>
+									</div>
+									<p className="text-[11px] text-slate-300 leading-relaxed">
+										{describeMonogamy(monogamyReading)}
+									</p>
+								</div>
+
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 									<div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex flex-col justify-between gap-2">
 										<div>
 											<div className="text-xs font-mono font-bold text-white">
-												5. Chiral Interferometer Run
+												Chiral interferometer
 											</div>
-											<div className="text-[10px] text-slate-400 mt-0.5">
+											<div className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
 												{colloquium.bishopLabAccessGranted
-													? "Prof. Bishop granted lab access! Run the 4.8σ verification ($950 Dept. Grant)."
-													: "Locked: Obtain Prof. Bishop’s approval at the 14:30 Seminar Room 204 Review."}
+													? "The night slot measures the world's chiral asymmetry A. Your boundary predicts A = −β. The run does not rewrite the lemma."
+													: "The interferometer is booked through Prof. Bishop. The 14:30 review in Seminar Room 204 is where that access is decided."}
 											</div>
+											{wb.chiralLabAsymmetry !== null && (
+												<p className="text-[11px] font-mono text-amber-100 mt-2 leading-relaxed">
+													Measured A = {formatReal(CHIRAL_LAB_ASYMMETRY)} ±{" "}
+													{formatReal(CHIRAL_LAB_SIGMA)}. Predicted −β ={" "}
+													{formatReal(
+														predictedChiralAsymmetry(wb.boundaryBeta),
+													)}
+													. Residual{" "}
+													{formatReal(
+														CHIRAL_LAB_ASYMMETRY -
+															predictedChiralAsymmetry(wb.boundaryBeta),
+													)}
+													.
+												</p>
+											)}
 										</div>
 										<button
 											type="button"
 											onClick={onRunChiralLabExperiment}
 											disabled={
 												!colloquium.bishopLabAccessGranted ||
-												colloquium.proofWorkbench.chiralLabDataAttached
+												wb.chiralLabDataAttached
 											}
 											className={`w-full py-2 rounded-lg font-mono text-xs font-bold ${
-												colloquium.proofWorkbench.chiralLabDataAttached
-													? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+												wb.chiralLabDataAttached
+													? "bg-slate-800 text-slate-300 border border-slate-700"
 													: colloquium.bishopLabAccessGranted
 														? "bg-purple-400 hover:bg-purple-300 text-slate-950 cursor-pointer"
 														: "bg-slate-800 text-slate-500 cursor-not-allowed"
 											}`}
 										>
-											{colloquium.proofWorkbench.chiralLabDataAttached
-												? "✓ 4.8σ Lab Data Attached"
-												: "Run Chiral Experiment ($950 Dept)"}
+											{wb.chiralLabDataAttached
+												? "Night run already recorded"
+												: "Run the night interferometer ($950)"}
 										</button>
 									</div>
 
 									<div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex flex-col justify-between gap-2">
 										<div>
 											<div className="text-xs font-mono font-bold text-white">
-												6. Cite Rook (2021, 2023, 2025)
+												Rook (2021, 2023, 2025)
 											</div>
 											<div className="text-[10px] text-slate-400 mt-0.5">
-												Appease Reviewer #2’s demand to cite his three identical
-												rectilinear papers in §2.
+												Reviewer #2 wants his three identical rectilinear
+												papers in §2. Citing him is departmental politics,
+												not a step in the proof.
 											</div>
 										</div>
 										<button
 											type="button"
 											onClick={onToggleRookCitations}
 											className={`w-full py-2 rounded-lg font-mono text-xs font-bold cursor-pointer ${
-												colloquium.proofWorkbench.rookCitationsAttached
+												wb.rookCitationsAttached
 													? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
 													: "bg-sky-400 hover:bg-sky-300 text-slate-950"
 											}`}
 										>
-											{colloquium.proofWorkbench.rookCitationsAttached
-												? "✓ Rook (2021–2025) Cited"
-												: "Insert 3 Rook Citations (15m)"}
+											{wb.rookCitationsAttached
+												? "Rook (2021–2025) is in §2"
+												: "Insert the three Rook citations (15m)"}
 										</button>
 									</div>
 								</div>
@@ -2085,7 +2126,7 @@ export const AcademicColloquiumOverlay: React.FC<
 											: "bg-slate-800 text-slate-500 cursor-not-allowed"
 									}`}
 								>
-									Attend 4-Hour Settlement Deposition (CKW Epiphany)
+									Attend Settlement Deposition
 								</button>
 							</div>
 						)}
@@ -2108,30 +2149,38 @@ export const AcademicColloquiumOverlay: React.FC<
 									Peano Hall Course Reader (1987 Preprint)
 								</h3>
 								<p className="text-sm leading-relaxed mb-3">
-									A measurement is not a passive laboratory event. When two
-									piece-worldlines overlap in configuration space, decoherence
-									may occur through sixty seconds of real-time combat.
-									Density-matrix purity Tr(ρ²) governs frame-data noise; isolate
-									spectator entanglement before attempting a 175ms Perfect
-									Parry.
+									The draft boundary map is ψ(t₀−1) = (α I + β γ₅) ψ(t₀).
+									The crown sector (γ₅ = +1) returns with multiplier μ₊ = α
+									+ β. The orthogonal sector returns with μ₋ = α − β. A
+									monarch continuous through yesterday would require μ₊ = 1.
+									A world you can still remember has μ₋ = 1. Expanding the
+									surface current gives B†γ₅B = 2αβ I + (α² + β²) γ₅. It
+									matches γ₅ only for a conserved probability current.
+									Hermiticity is that equality. It is not a separate dial.
 								</p>
 								<p className="text-sm leading-relaxed mb-3">
-									Hermiticity on ∂M requires a self-adjoint extension of Ĥ. If
-									surface flux is unbalanced, ∑Pᵢ ≠ 1 and probability leaks — in
-									this department, that is how untenured Pawns vanish from the
-									faculty directory.
+									The retrocausal Jacobian on the (t, w) cut, in units of κ,
+									is J = | 0 , κ₁₂ ; κ₂₁ , 0 |. Its characteristic polynomial
+									is det(λI − J) = λ² − κ₁₂ κ₂₁. A positive product is a
+									pair of real roots, and a real root is a pole.
 								</p>
 								<p className="text-sm leading-relaxed mb-3">
-									CHSH: classical S ≤ 2; quantum S ≤ 2√2. Tsirelson-bound
-									assists tear classical locality. Coffman–Kundu–Wootters: a
-									system maximally entangled with one observer has no
-									entanglement left for a third — including a marriage, or a
-									crown.
+									CHSH. Set a′ = a + π/2 and b′ = b − π/2, and take E(x, y)
+									= cos(x − y). Then S = |E(a,b) + E(a,b′) + E(a′,b) −
+									E(a′,b′)|. Classical theories cannot exceed 2. Quantum
+									correlators cannot exceed 2√2.
+								</p>
+								<p className="text-sm leading-relaxed mb-3">
+									Coffman–Kundu–Wootters: τ(A|B) + τ(A|C) ≤ τ(A|BC) ≤ 1. A
+									pair that already saturates the joint tangle leaves nothing
+									for a third party. The course does not tell you which
+									three numbers belong to a king, a queen, and a crown.
 								</p>
 								<p className="text-xs italic text-amber-950/80 border-l-2 border-amber-800/40 pl-3 mt-4">
-									Toby&apos;s margin note in blue ballpoint: &ldquo;Dr. Pawn —
-									flip the −κ BEFORE you buy me pastry money. Also the mortgage
-									is due. — T&rdquo;
+									Toby&apos;s margin note in blue ballpoint: &ldquo;Dr. Pawn
+									— the two off-diagonal corners are not the same entry. I
+									think one of the signs is my thesis and one of them is
+									yours. Also the mortgage is due. — T&rdquo;
 								</p>
 							</div>
 						)}
@@ -2199,7 +2248,7 @@ export const AcademicColloquiumOverlay: React.FC<
 								onClick={() => onSetDrawerTab("CHALKBOARD_PROOF")}
 								className="px-2.5 py-1 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-200 font-mono text-[11px] font-bold cursor-pointer"
 							>
-								Chalkboard ({colloquium.centralLemmaIntegrity}%)
+								Chalkboard
 							</button>
 							<button
 								type="button"

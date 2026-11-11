@@ -549,12 +549,12 @@ export default function App() {
 		handleAttendSettlementDeposition,
 		handleConfirmDepositionEpiphany,
 		handleEatHotPlateSoup,
-		handleAdjustSurfaceCommutator,
 		handleAdjustChshAngles,
+		handleCommitBoundaryCoefficient,
+		handleCommitJacobianEntry,
+		handleCommitTangle,
 		handleAttendScheduledMeetingInRoom,
 		handleTalkToNpcInRoom,
-		handleSelectBoundaryGauge,
-		handleToggleJacobianSign,
 		handleRunChiralLabExperiment,
 		handleToggleRookCitations,
 		handleToggleGrantLineItem,
@@ -833,11 +833,11 @@ export default function App() {
 					onBoardTransitToStation={handleBoardTransitToStation}
 					onAttendScheduledMeetingInRoom={handleAttendScheduledMeetingInRoom}
 					onTalkToNpcInRoom={handleTalkToNpcInRoom}
-					onSelectBoundaryGauge={handleSelectBoundaryGauge}
-					onToggleJacobianSign={handleToggleJacobianSign}
+					onCommitBoundaryCoefficient={handleCommitBoundaryCoefficient}
+					onCommitJacobianEntry={handleCommitJacobianEntry}
+					onCommitTangle={handleCommitTangle}
 					onRunChiralLabExperiment={handleRunChiralLabExperiment}
 					onToggleRookCitations={handleToggleRookCitations}
-					onAdjustSurfaceCommutator={handleAdjustSurfaceCommutator}
 					onAdjustChshAngles={handleAdjustChshAngles}
 					onToggleGrantLineItem={handleToggleGrantLineItem}
 					onSubmitGrantBudgetProposal={handleSubmitGrantBudgetProposal}

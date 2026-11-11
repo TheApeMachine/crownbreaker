@@ -1810,6 +1810,11 @@ export function publishSentientTheoremAcrossMultiverse(
 	candidateLineageId: string,
 	finalAxiom: string,
 	publishedDoi: string,
+	proof?: {
+		monarchLemmaProved: boolean;
+		entanglementSwapUnlocked: boolean;
+		publishedChshS: number;
+	},
 ) {
 	for (const [, branch] of multiverse.timelines.entries()) {
 		for (const p of branch.pieces) {
@@ -1821,6 +1826,11 @@ export function publishSentientTheoremAcrossMultiverse(
 				p.theoremStatus = "PUBLISHED";
 				p.isChronocrator = true;
 				p.theoremAxiom = finalAxiom;
+				if (proof) {
+					p.monarchLemmaProved = proof.monarchLemmaProved;
+					p.entanglementSwapUnlocked = proof.entanglementSwapUnlocked;
+					p.publishedChshS = proof.publishedChshS;
+				}
 			}
 		}
 	}
@@ -1829,8 +1839,10 @@ export function publishSentientTheoremAcrossMultiverse(
 		"RETROACTIVE_YESTERDAY_CHECKMATE",
 		multiverse.activeTimelineId,
 		undefined,
-		`📜 SENTIENT THEOREM PUBLISHED (${publishedDoi})!`,
-		`"${finalAxiom}" passed Peer Review! All Professors have returned to Chess Warriors & "Checkmate Yesterday" is now UNLOCKED!`,
+		`📜 SENTIENT THEOREM PRINTED (${publishedDoi})`,
+		proof?.monarchLemmaProved
+			? `"${finalAxiom}"`
+			: `"${finalAxiom}" — the monarch lemma does not hold, so yesterday is not refuted.`,
 	);
 }
 

@@ -11,9 +11,9 @@ import {
 	clearPendingUniInteract,
 	queuePendingUniInteract,
 	appendPerseusArmColleagueEmail,
-	computeChshS,
 	DAY_NAMES_LIST,
 	formatSimClock,
+	noteLivedSpark,
 	recomputeProofIntegrity,
 	recordDepartmentalTransaction,
 	recordLegalDebt,
@@ -22,6 +22,18 @@ import {
 	triggerCafeteriaCollisionSpill,
 	tryResolveAnniversaryCollapse,
 } from "../academic/colloquiumSimHelpers";
+import {
+	CHIRAL_LAB_ASYMMETRY,
+	CHIRAL_LAB_SIGMA,
+	describeBoundary,
+	describeJacobian,
+	evaluateBoundary,
+	evaluateJacobian,
+	formatReal,
+	predictedChiralAsymmetry,
+	publishedTheorem,
+	reviewerReport,
+} from "../academic/lemmaMathematics";
 import { soundEngine } from "../audio/soundEngine";
 import {
 	getPieceLineageId,
@@ -340,6 +352,11 @@ export function useAcademicColloquiumActions({
 		soundEngine.playTramBell();
 		soundEngine.playTramMotorHum();
 
+		noteLivedSpark(
+			col,
+			"tram_passengers",
+			`The same car, the next stop. You are not sure the passengers are the same passengers.`,
+		);
 		col.colloquiumLog = [
 			`🚈 [${formatSimClock(col.timeOfDayMinutes)}] Boarded GAMTA Line 1 toward ${st.name} (−$1.75). Hold on — the ride is underway.`,
 			...col.colloquiumLog.slice(0, 9),
@@ -434,6 +451,11 @@ export function useAcademicColloquiumActions({
 			`☕ [${formatSimClock(col.timeOfDayMinutes)}] Kick #${col.coffeeMachineKickCount}: The "OUT OF ORDER SINCE NOV 1987" note fluttered to the linoleum. Still no coffee.`,
 			`☕ [${formatSimClock(col.timeOfDayMinutes)}] Kick #${col.coffeeMachineKickCount}: A relay clicked inside the 1987 chassis. Down the hall, Tenured Prof. Rook sipped a fresh cafeteria espresso.`,
 		];
+		noteLivedSpark(
+			col,
+			"window_rain",
+			`The rain on the office window crosses itself. The rings pass through and keep going.`,
+		);
 		col.colloquiumLog = [
 			quips[(col.coffeeMachineKickCount - 1) % quips.length],
 			...col.colloquiumLog.slice(0, 9),
@@ -911,28 +933,27 @@ export function useAcademicColloquiumActions({
 		if (!col?.active) return;
 
 		col.depositionEpiphanySeen = true;
-		col.entanglementSwapUnlocked = true;
 		col.domesticArcStage = "DEPOSITION_DONE";
 		col.depositionModalOpen = false;
-		col.proofWorkbench.monogamyLemmaAnnotated = true;
-		col.proofWorkbench.lastVerificationMessage =
-			"✓ Coffman–Kundu–Wootters monogamy: τ(A|B)+τ(A|C) ≤ τ(A|BC). King maximally entangled with Queen — entanglement swap on Turn 1 decoheres the crown.";
-		recomputeProofIntegrity(col);
 		recordLegalDebt(
 			col,
 			"Vance & Assoc. — Settlement Deposition + Recess (billed)",
 			1092,
 		);
+		noteLivedSpark(
+			col,
+			"vance_napkin",
+			`Vance draws three boxes on the napkin and says the house cannot be wholly yours and wholly hers and still wholly a marriage.`,
+		);
 		col.colloquiumLog = [
-			`💔 [${formatSimClock(col.timeOfDayMinutes)}] Deposition epiphany: the marriage failed because a quantum state cannot obey three-party non-local correlation. Entanglement Swap unlocked.`,
-			`⚖️ Arthur Vance hands you a paper napkin: "Take a minute, Dr. Pawn. We'll bill this recess as a 0.2."`,
-			...col.colloquiumLog.slice(0, 8),
+			`⚖️ [${formatSimClock(col.timeOfDayMinutes)}] Arthur Vance takes the napkin back and writes 0.2 on the timesheet.`,
+			...col.colloquiumLog.slice(0, 9),
 		];
 		col.npcMemoryNotes = [
-			"CKW MONOGAMY: To checkmate the King yesterday, force an entanglement swap on Turn 1 so his state decoheres from the crown.",
+			"Vance's napkin had three boxes on it. He billed the recess.",
 			...col.npcMemoryNotes.slice(0, 5),
 		];
-		soundEngine.playSynodResonance(true);
+		soundEngine.playOfficeKeyboardClack();
 		setAcademicColloquium({ ...col });
 	}, []);
 
@@ -968,49 +989,86 @@ export function useAcademicColloquiumActions({
 		setAcademicColloquium({ ...col });
 	}, []);
 
-	const handleAdjustSurfaceCommutator = useCallback((offset: number) => {
-		const sim = simRef.current;
-		const col = sim.academicColloquium;
-		if (!col?.active) return;
-
-		col.proofWorkbench.surfaceCommutatorOffset = offset;
-		const balanced = Math.abs(offset) < 0.08;
-		col.proofWorkbench.hermitianBoundaryBalanced = balanced;
-		if (balanced) {
-			col.proofWorkbench.lastVerificationMessage =
-				"✓ Surface flux balanced: ⟨φ|Ĥψ⟩ = ⟨Ĥφ|ψ⟩ on ∂M. Toby ran the numerical check — eigenvalues λ_k are strictly real.";
-			soundEngine.playSynodResonance(false);
-		} else {
-			col.proofWorkbench.lastVerificationMessage =
-				"✗ Energy leaking across ∂M at t₀−1. ∑P_i ≠ 1 — probability non-conservation. Pawn erasure risk from mathematical inconsistency.";
-			soundEngine.playBrokenCoffeeMachineSputter();
-		}
+	const commitChalkChange = (
+		col: NonNullable<typeof simRef.current.academicColloquium>,
+		reason: string,
+		minutes: number,
+	) => {
+		advanceSimMinutes(col, minutes, reason);
 		recomputeProofIntegrity(col);
+		soundEngine.playOfficeKeyboardClack();
 		setAcademicColloquium({ ...col });
-	}, []);
+	};
+
+	const handleCommitBoundaryCoefficient = useCallback(
+		(which: "alpha" | "beta", value: number) => {
+			const col = simRef.current.academicColloquium;
+			if (!col?.active) return;
+			const prev =
+				which === "alpha"
+					? col.proofWorkbench.boundaryAlpha
+					: col.proofWorkbench.boundaryBeta;
+			if (Math.abs(prev - value) <= 1e-12) return;
+			if (which === "alpha") col.proofWorkbench.boundaryAlpha = value;
+			else col.proofWorkbench.boundaryBeta = value;
+			commitChalkChange(col, "Revised a boundary coefficient on the chalkboard", 12);
+		},
+		[],
+	);
+
+	const handleCommitJacobianEntry = useCallback(
+		(which: "k12" | "k21", value: number) => {
+			const col = simRef.current.academicColloquium;
+			if (!col?.active) return;
+			const prev =
+				which === "k12"
+					? col.proofWorkbench.jacobianKappa12
+					: col.proofWorkbench.jacobianKappa21;
+			if (Math.abs(prev - value) <= 1e-12) return;
+			if (which === "k12") col.proofWorkbench.jacobianKappa12 = value;
+			else col.proofWorkbench.jacobianKappa21 = value;
+			commitChalkChange(col, "Rewrote an off-diagonal Jacobian entry", 12);
+		},
+		[],
+	);
+
+	const handleCommitTangle = useCallback(
+		(which: "queen" | "crown" | "joint", value: number | null) => {
+			const col = simRef.current.academicColloquium;
+			if (!col?.active) return;
+			const prev =
+				which === "queen"
+					? col.proofWorkbench.tangleQueen
+					: which === "crown"
+						? col.proofWorkbench.tangleCrown
+						: col.proofWorkbench.tangleJoint;
+			if (prev === value) return;
+			if (
+				prev !== null &&
+				value !== null &&
+				Math.abs(prev - value) <= 1e-12
+			) {
+				return;
+			}
+			if (which === "queen") col.proofWorkbench.tangleQueen = value;
+			else if (which === "crown") col.proofWorkbench.tangleCrown = value;
+			else col.proofWorkbench.tangleJoint = value;
+			commitChalkChange(col, "Wrote a tangle into the monogamy relation", 10);
+		},
+		[],
+	);
 
 	const handleAdjustChshAngles = useCallback(
 		(angleA: number, angleB: number) => {
-			const sim = simRef.current;
-			const col = sim.academicColloquium;
+			const col = simRef.current.academicColloquium;
 			if (!col?.active) return;
-
+			const same =
+				Math.abs(col.proofWorkbench.measurementAngleA - angleA) <= 1e-12 &&
+				Math.abs(col.proofWorkbench.measurementAngleB - angleB) <= 1e-12;
+			if (same) return;
 			col.proofWorkbench.measurementAngleA = angleA;
 			col.proofWorkbench.measurementAngleB = angleB;
-			col.proofWorkbench.chshS = Number(
-				computeChshS(angleA, angleB).toFixed(4),
-			);
-			const tsirelson = 2 * Math.SQRT2;
-			if (col.proofWorkbench.chshS >= tsirelson - 0.05) {
-				col.proofWorkbench.lastVerificationMessage = `✓ CHSH S = ${col.proofWorkbench.chshS.toFixed(3)} ≈ 2√2 (Tsirelson bound). Assist strikes may breach classical locality.`;
-				soundEngine.playSynodResonance(false);
-			} else if (col.proofWorkbench.chshS <= 2.01) {
-				col.proofWorkbench.lastVerificationMessage = `CHSH S = ${col.proofWorkbench.chshS.toFixed(3)} ≤ 2 (classical bound). Entangled assists deal standard damage.`;
-			} else {
-				col.proofWorkbench.lastVerificationMessage = `CHSH S = ${col.proofWorkbench.chshS.toFixed(3)} — quantum correlator between classical and Tsirelson.`;
-			}
-			recomputeProofIntegrity(col);
-			setAcademicColloquium({ ...col });
+			commitChalkChange(col, "Recomputed the CHSH correlators", 8);
 		},
 		[],
 	);
@@ -1060,10 +1118,10 @@ export function useAcademicColloquiumActions({
 			if (apt.id === "appt_tue_toby") {
 				col.tobyRelationship = Math.min(100, col.tobyRelationship + 16);
 				apt.outcomeNote = stained
-					? "Toby handed you paper napkins for your coffee-stained shirt and pointed out the −κ Jacobian sign error on the chalkboard."
-					: "Reviewed the off-diagonal Jacobian sign error with Toby at the Room 4B chalkboard (+16 Toby Trust).";
+					? "Toby handed you paper napkins for your coffee-stained shirt and spread his thesis next to Lemma 3.2. Both off-diagonal corners of his Jacobian are written −κ, and he is not sure which corner belongs to which paper."
+					: "Toby spread his thesis next to the manuscript. Both off-diagonal corners are written −κ, and he is not sure which corner is his convention (+16 Toby Trust).";
 				col.npcMemoryNotes = [
-					`Met with Toby on Tuesday morning; he showed you how flipping −κ to +κ fixes the Jacobian determinant.`,
+					"Toby's thesis writes −κ in both off-diagonal corners. He does not know which corner is Lemma 3.2.",
 					...col.npcMemoryNotes.slice(0, 5),
 				];
 				col.colloquiumLog = [
@@ -1167,10 +1225,15 @@ export function useAcademicColloquiumActions({
 						...col.colloquiumLog.slice(0, 9),
 					];
 				} else {
+					noteLivedSpark(
+						col,
+						"toby_corners",
+						`Toby taps the two off-diagonal corners and doesn't write a sign. They are different entries. He keeps wanting them to be one number.`,
+					);
 					col.colloquiumLog = [
 						stained
-							? `💬 [${formatSimClock(col.timeOfDayMinutes)}] Toby winced at your coffee-stained shirt: "Dr. Pawn, did you get run over in the cafeteria?! Open the Chalkboard Workbench so we can flip the −κ Jacobian sign and select the Chiral Anti-Periodic gauge!"`
-							: `💬 [${formatSimClock(col.timeOfDayMinutes)}] Toby points to the chalkboard: "Once we select the Chiral Anti-Periodic gauge ψ(t₀−1) = −γ₅ψ(t₀) and flip −κ to +κ, we just need Prof. Bishop's Chiral Lab data!"`,
+							? `💬 [${formatSimClock(col.timeOfDayMinutes)}] Toby winced at your coffee-stained shirt: "Dr. Pawn, did you get run over in the cafeteria? The determinant still has real roots. I don't know which corner is mine."`
+							: `💬 [${formatSimClock(col.timeOfDayMinutes)}] Toby taps the two off-diagonal corners with the chalk and doesn't write a sign. "They're different entries, Dr. Pawn. I keep wanting them to be one number."`,
 						...col.colloquiumLog.slice(0, 9),
 					];
 				}
@@ -1233,59 +1296,6 @@ export function useAcademicColloquiumActions({
 		[],
 	);
 
-	// CHALKBOARD PROOF WORKBENCH HANDLERS
-	const handleSelectBoundaryGauge = useCallback(
-		(
-			gauge:
-				| "DIRICHLET_CLAMP"
-				| "CHIRAL_ANTIPERIODIC"
-				| "TRUNCATED_PERTURBATIVE",
-		) => {
-			const sim = simRef.current;
-			const col = sim.academicColloquium;
-			if (!col?.active) return;
-
-			advanceSimMinutes(col, 25, "Worked the boundary gauge on the chalkboard");
-			col.proofWorkbench.boundaryGaugeChoice = gauge;
-			if (gauge === "CHIRAL_ANTIPERIODIC") {
-				col.proofWorkbench.boundaryGaugeVerified = true;
-				col.proofWorkbench.lastVerificationMessage =
-					"✓ Chiral Anti-Periodic Gauge ψ(t₀−1) = −γ₅ψ(t₀) verified! The boundary commutator surface term vanishes identically.";
-				soundEngine.playSynodResonance(false);
-			} else if (gauge === "DIRICHLET_CLAMP") {
-				col.proofWorkbench.boundaryGaugeVerified = false;
-				col.proofWorkbench.lastVerificationMessage =
-					"✗ Hard Dirichlet Clamp ψ(t₀−1) = 0 violates causal unitarity and zeroes out the retrocausal propagator.";
-				soundEngine.playBrokenCoffeeMachineSputter();
-			} else {
-				col.proofWorkbench.boundaryGaugeVerified = false;
-				col.proofWorkbench.lastVerificationMessage =
-					"✗ Truncated O(ε²) expansion still diverges at the t₀ − 1 monarch worldline pole.";
-				soundEngine.playBrokenCoffeeMachineSputter();
-			}
-			recomputeProofIntegrity(col);
-			setAcademicColloquium({ ...col });
-		},
-		[],
-	);
-
-	const handleToggleJacobianSign = useCallback(() => {
-		const sim = simRef.current;
-		const col = sim.academicColloquium;
-		if (!col?.active) return;
-
-		advanceSimMinutes(col, 20, "Re-derived the off-diagonal Jacobian");
-		col.proofWorkbench.jacobianSignFlipped =
-			!col.proofWorkbench.jacobianSignFlipped;
-		col.proofWorkbench.lastVerificationMessage = col.proofWorkbench
-			.jacobianSignFlipped
-			? "✓ Flipped off-diagonal Jacobian sign from −κ to +κ! Determinant is now λ² + κ² > 0 (strictly positive-definite)."
-			: "✗ Reverted off-diagonal Jacobian sign to −κ (singular at λ = ±κ).";
-		recomputeProofIntegrity(col);
-		soundEngine.playOfficeKeyboardClack();
-		setAcademicColloquium({ ...col });
-	}, []);
-
 	const handleRunChiralLabExperiment = useCallback(() => {
 		const sim = simRef.current;
 		const col = sim.academicColloquium;
@@ -1344,33 +1354,40 @@ export function useAcademicColloquiumActions({
 		);
 		advanceSimMinutes(col, 45, "Ran the chiral interferometer through cooldown");
 		col.proofWorkbench.chiralLabDataAttached = true;
-		col.proofWorkbench.lastVerificationMessage =
-			"✓ Night Chiral Interferometer data attached (4.8σ retrocausal phase convergence)!";
+		col.proofWorkbench.chiralLabAsymmetry = CHIRAL_LAB_ASYMMETRY;
 		recomputeProofIntegrity(col);
-
-		if (
-			col.centralLemmaIntegrity >= 100 &&
-			!col.inbox.some((e) => e.id === "email_lemma_fixed")
-		) {
-			const fixedEmail = {
-				id: "email_lemma_fixed",
+		const boundary = evaluateBoundary(
+			col.proofWorkbench.boundaryAlpha,
+			col.proofWorkbench.boundaryBeta,
+		);
+		const jacobian = evaluateJacobian(
+			col.proofWorkbench.jacobianKappa12,
+			col.proofWorkbench.jacobianKappa21,
+		);
+		const predicted = predictedChiralAsymmetry(col.proofWorkbench.boundaryBeta);
+		const residual = CHIRAL_LAB_ASYMMETRY - predicted;
+		const tobyNote = !col.inbox.some((e) => e.id === "email_lab_night");
+		if (tobyNote) {
+			const agrees = Math.abs(residual) <= 2 * CHIRAL_LAB_SIGMA;
+			const labEmail = {
+				id: "email_lab_night",
 				sender: "Toby (Your Graduate Student)",
 				senderRole: "7th-Year PhD Candidate · Office 4B-Annex",
-				subject: "WE FIXED IT!! Central Lemma 3.2 is 100% Airtight!",
+				subject: "Night interferometer — the number, not a verdict",
 				dateLabel: `${DAY_NAMES_LIST[col.dayIndex % 5]} ${formatSimClock(col.timeOfDayMinutes)}`,
 				category: "GRAD_STUDENT" as const,
 				unread: true,
-				body: `Dr. Pawn!\n\nWith the Chiral Anti-Periodic gauge ψ(t₀−1) = −γ₅ψ(t₀), the corrected +κ Jacobian determinant, and our 4.8σ Chiral Interferometer data, Central Lemma 3.2 is 100% mathematically airtight!\n\n"On the Nonexistence of Monarchs in Retrocausal Systems" is ready for formal submission to the Journal of Transfinite Causality!\n\n— Toby`,
+				body: `Dr. Pawn,\n\nThe mirrors came back with A = ${formatReal(CHIRAL_LAB_ASYMMETRY)} ± ${formatReal(CHIRAL_LAB_SIGMA)} (4.8σ from a vanishing asymmetry).\n\nYour boundary has β = ${formatReal(col.proofWorkbench.boundaryBeta)}, so it predicts A = −β = ${formatReal(predicted)}. Residual = ${formatReal(residual)}.\n\n${describeBoundary(boundary)}\n${describeJacobian(jacobian)}\n\n${agrees ? "This is the first night the prediction and the mirrors are in the same place. I still don't know if the lemma is finished." : "The prediction and the mirrors are not in the same place. I'm leaving the printout on your desk."}\n\n— Toby`,
 			};
-			col.inbox = [fixedEmail, ...col.inbox];
-			col.selectedEmailId = fixedEmail.id;
+			col.inbox = [labEmail, ...col.inbox];
+			col.selectedEmailId = labEmail.id;
 		}
 
 		col.colloquiumLog = [
-			`🔬 [${formatSimClock(col.timeOfDayMinutes)}] Finished night Chiral Interferometer run (−$950 Dept. Budget). Central Lemma 3.2 Integrity is now ${col.centralLemmaIntegrity}%!`,
+			`🔬 [${formatSimClock(col.timeOfDayMinutes)}] Night run recorded. A = ${formatReal(CHIRAL_LAB_ASYMMETRY)} ± ${formatReal(CHIRAL_LAB_SIGMA)}. Predicted −β = ${formatReal(predicted)}. Residual ${formatReal(residual)}. (−$950)`,
 			...col.colloquiumLog.slice(0, 9),
 		];
-		soundEngine.playSynodResonance(false);
+		soundEngine.playOfficeKeyboardClack();
 		setAcademicColloquium({ ...col });
 	}, []);
 
@@ -1683,18 +1700,16 @@ export function useAcademicColloquiumActions({
 		col.reviewer2RivalryLevel = Math.min(100, col.reviewer2RivalryLevel + 25);
 		// Career years advance by sleeping through them — never skip a career in one click.
 
-		const hermNote = col.proofWorkbench.hermitianBoundaryBalanced
-			? "The boundary self-adjoint extension is now formally correct"
-			: "Equation 12 diverges because the author treats a Hilbert space as finite-dimensional when dealing with open files, and neglects the non-trivial topology of the toroidal board";
-		const chshNote =
-			col.proofWorkbench.chshS >= 2 * Math.SQRT2 - 0.05
-				? "CHSH correlators approach the Tsirelson bound"
-				: "CHSH analysis remains classical (S ≤ 2) and therefore pedagogically incomplete";
-		const rejectionReasons = [
-			`DECISION: REJECT.\n\nReferee Report (Reviewer #2):\n"The author attempts to apply a Wick rotation to the temporal metric in Section 4, but completely neglects the non-trivial topology of the toroidal board. ${hermNote}. Furthermore, the manuscript fails to cite Rook (2021), Rook (2023), or Rook (2025) on rectilinear files. Deservedly rejected."`,
-			`DECISION: REJECT (2nd Submission).\n\nReferee Report (Reviewer #2):\n"Despite the author's 47-page revision and 2:00 AM Chiral Lab data, ${chshNote}. I remain philosophically opposed to retrocausal regicide. My h-index is ${col.rookHIndex}; the author's is ${col.hIndex}. Reject."`,
-			`DECISION: FINAL REJECTION (3rd Submission — Editorial Ban).\n\nReferee Report (Reviewer #2):\n"This is the third time Dr. Pawn has submitted 'On the Nonexistence of Monarchs in Retrocausal Systems.' The proof is technically flawless${col.proofWorkbench.monogamyLemmaAnnotated ? " (even the Coffman–Kundu–Wootters monogamy appendix is correct)" : ""}, which makes it even more offensive to classical hierarchy. Do not resubmit to the Journal of Transfinite Causality."`,
-		];
+		recomputeProofIntegrity(col);
+		const rejectionBody = reviewerReport(
+			nextRejection as 1 | 2 | 3,
+			col.proofWorkbench,
+			{
+				hIndex: col.hIndex,
+				rookHIndex: col.rookHIndex,
+				citationsAttached: col.proofWorkbench.rookCitationsAttached,
+			},
+		);
 
 		const rejEmail = {
 			id: `email_jtc_reject_${nextRejection}`,
@@ -1704,7 +1719,7 @@ export function useAcademicColloquiumActions({
 			dateLabel: `Year ${col.academicYear} · ${col.semester}`,
 			category: "REVIEWER_2" as const,
 			unread: true,
-			body: rejectionReasons[nextRejection - 1],
+			body: rejectionBody,
 		};
 
 		col.inbox = [rejEmail, ...col.inbox];
@@ -1767,19 +1782,6 @@ export function useAcademicColloquiumActions({
 			return;
 		}
 
-		if (
-			col.domesticArcStage !== "DEPOSITION_DONE" &&
-			col.domesticArcStage !== "RUINED_BUT_PUBLISHED"
-		) {
-			col.colloquiumLog = [
-				`📜 [${formatSimClock(col.timeOfDayMinutes)}] Napkin math still missing — finish the settlement deposition before wiring the fee.`,
-				...col.colloquiumLog.slice(0, 9),
-			];
-			soundEngine.playRejectionStamp();
-			setAcademicColloquium({ ...col });
-			return;
-		}
-
 		if (!col.equipmentSoldForFee && col.checkingBalance < 3500) {
 			return;
 		}
@@ -1823,19 +1825,21 @@ export function useAcademicColloquiumActions({
 			sim.pieces.find((p) => p.id === col.candidatePieceId) ||
 			sim.pieces.find((p) => p.isSentientTheorem);
 
-		const finalAxiom = col.entanglementSwapUnlocked
-			? "⊢ ∀t < t₀ : ¬∃Monarch via CKW entanglement swap on Turn 1 [Q.E.D.]"
-			: '⊢ "On the Nonexistence of Monarchs in Retrocausal Systems" [Q.E.D.]';
+		recomputeProofIntegrity(col);
+		const printed = publishedTheorem(col.proofWorkbench);
 		const doi = col.publishedDoi || `10.8473/gate.perseus.2032.8473`;
-		const publishedChsh = col.proofWorkbench.chshS;
-		const swapUnlocked = col.entanglementSwapUnlocked;
 
 		syncActiveBranchFromSim();
 		publishSentientTheoremAcrossMultiverse(
 			sim.multiverse,
 			col.candidateLineageId || candidate?.id || "w_p_4",
-			finalAxiom,
+			printed.axiom,
 			doi,
+			{
+				monarchLemmaProved: printed.monarchLemmaProved,
+				entanglementSwapUnlocked: printed.entanglementSwapUnlocked,
+				publishedChshS: printed.publishedChshS,
+			},
 		);
 
 		for (const p of sim.pieces) {
@@ -1845,10 +1849,11 @@ export function useAcademicColloquiumActions({
 			) {
 				p.isSentientTheorem = true;
 				p.theoremStatus = "PUBLISHED";
-				p.theoremAxiom = finalAxiom;
+				p.theoremAxiom = printed.axiom;
 				p.isChronocrator = true;
-				p.entanglementSwapUnlocked = swapUnlocked;
-				p.publishedChshS = publishedChsh;
+				p.monarchLemmaProved = printed.monarchLemmaProved;
+				p.entanglementSwapUnlocked = printed.entanglementSwapUnlocked;
+				p.publishedChshS = printed.publishedChshS;
 			}
 			const rig = sim.pieceRigs.get(p.id);
 			if (rig) {
@@ -1937,17 +1942,27 @@ export function useAcademicColloquiumActions({
 			(m) => m.dimensionType === "CHECKMATE_YESTERDAY",
 		);
 
+		const boundaryNow = evaluateBoundary(
+			col.proofWorkbench.boundaryAlpha,
+			col.proofWorkbench.boundaryBeta,
+		);
 		setWatchEventBanner({
-			title: `⊢ FORMALLY RECOGNIZED IN "GALACTIC ADVANCES IN THEORETICAL EVERYTHING" (IF: 847.3)!`,
-			subtitle: `"On the Nonexistence of Monarchs in Retrocausal Systems" is published! Six years of struggle — ${yesterdayMoves.length} Cyan "Checkmate Yesterday" (Δt = −1) vector(s) are now UNLOCKED!`,
+			title: `⊢ PRINTED IN "GALACTIC ADVANCES IN THEORETICAL EVERYTHING" (IF: 847.3)`,
+			subtitle: printed.monarchLemmaProved
+				? printed.entanglementSwapUnlocked
+					? `The manuscript establishes that no monarch is continuous through the cut, and the crown tangle is excluded. ${yesterdayMoves.length} Checkmate Yesterday vector(s) can swap the queen's entanglement onto the past.`
+					: `The manuscript establishes that no monarch is continuous through the cut. ${yesterdayMoves.length} Checkmate Yesterday vector(s) are on the board. The crown tangle was never forced to zero.`
+				: `The journal printed the manuscript. μ₊ = ${formatReal(boundaryNow.muPlus)}, μ₋ = ${formatReal(boundaryNow.muMinus)}. Yesterday's king is not refuted.`,
 		});
 
 		setBattleLogs((prev) => [
 			{
 				id: `pub_qed_${Date.now()}`,
 				turnNumber: sim.turnNumber,
-				summary: `⊢ Dr. Pawn's Theorem Published After 6 Simulated Years [Impact Factor: 847.3]!`,
-				detail: `"On the Nonexistence of Monarchs in Retrocausal Systems" accepted by Galactic Advances in Theoretical Everything (Perseus Arm). Checkmate Yesterday (Δt = −1) unlocked!`,
+				summary: printed.monarchLemmaProved
+					? `⊢ Dr. Pawn's theorem is printed, and the monarch lemma holds.`
+					: `⊢ Galactic Advances printed a manuscript whose monarch lemma does not hold.`,
+				detail: printed.axiom,
 				wasUpset: false,
 				winnerFaction: candidate?.faction || "w",
 			},
@@ -1985,12 +2000,12 @@ export function useAcademicColloquiumActions({
 		handleAttendSettlementDeposition,
 		handleConfirmDepositionEpiphany,
 		handleEatHotPlateSoup,
-		handleAdjustSurfaceCommutator,
 		handleAdjustChshAngles,
+		handleCommitBoundaryCoefficient,
+		handleCommitJacobianEntry,
+		handleCommitTangle,
 		handleAttendScheduledMeetingInRoom,
 		handleTalkToNpcInRoom,
-		handleSelectBoundaryGauge,
-		handleToggleJacobianSign,
 		handleRunChiralLabExperiment,
 		handleToggleRookCitations,
 		handleToggleGrantLineItem,

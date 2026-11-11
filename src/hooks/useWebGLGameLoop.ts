@@ -17,12 +17,14 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import {
 	clearPendingUniInteract,
 	formatSimClock,
+	noteArrivedRoom,
 	queuePendingUniInteract,
 	recordPersonalTransaction,
 	syncAppointmentsWithClock,
 	triggerCafeteriaCollisionSpill,
 	tryResolveAnniversaryCollapse,
 } from "../academic/colloquiumSimHelpers";
+import { manuscriptChalkLines } from "../academic/lemmaMathematics";
 import { soundEngine } from "../audio/soundEngine";
 import { ARCHETYPES } from "../data/archetypes";
 import {
@@ -1229,6 +1231,7 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 									col.currentRoom = "DRY_CLEANER";
 								} else if (st.id === "KEPLER_SUBURBS") {
 									col.currentRoom = "CITY_STREETS";
+									noteArrivedRoom(col, "CITY_STREETS");
 									if (
 										col.tobyCroissantPurchased &&
 										(col.domesticArcStage === "CROISSANT_BOUGHT" ||
@@ -1388,6 +1391,7 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 							if (detectedRoom !== col.currentRoom) {
 								const prevRoom = col.currentRoom;
 								col.currentRoom = detectedRoom;
+								noteArrivedRoom(col, detectedRoom);
 								hudSyncAccumulator = 1.0;
 								if (
 									detectedRoom === "PAWN_HOUSE" &&
@@ -1463,6 +1467,7 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 								if (detectedRoom !== col.currentRoom) {
 									const prevRoom = col.currentRoom;
 									col.currentRoom = detectedRoom;
+									noteArrivedRoom(col, detectedRoom);
 									hudSyncAccumulator = 1.0;
 									if (
 										detectedRoom === "PAWN_HOUSE" &&
@@ -1564,10 +1569,8 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 					cafeteriaQueuePosition: col.cafeteriaQueuePosition,
 					cafeteriaServiceProgress: col.cafeteriaServiceProgress,
 					activeDryCleaningTicket: col.activeDryCleaningTicket,
-					lemmaIntegrity: col.centralLemmaIntegrity,
-					boundaryGaugeVerified: col.proofWorkbench.boundaryGaugeVerified,
-					jacobianSignFlipped: col.proofWorkbench.jacobianSignFlipped,
-					chiralLabDataAttached: col.proofWorkbench.chiralLabDataAttached,
+					chalkLines: manuscriptChalkLines(col.proofWorkbench),
+					manuscriptLine: col.proofWorkbench.lastVerificationMessage,
 					journalRejections: col.journalRejections,
 					hIndex: col.hIndex,
 					personalBalance: col.checkingBalance,
@@ -1578,10 +1581,6 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 					isRidingTram: col.isRidingTram,
 					tramDestinationStationId: col.tramDestinationStationId,
 					livingInOffice4B: col.livingInOffice4B,
-					hermitianBoundaryBalanced:
-						col.proofWorkbench.hermitianBoundaryBalanced,
-					chshS: col.proofWorkbench.chshS,
-					monogamyLemmaAnnotated: col.proofWorkbench.monogamyLemmaAnnotated,
 				});
 
 				// Hide Dr. Pawn's head mesh in First-Person POV so spectacles/hair never clip the camera lens, and keep Dr. Pawn's self-label hidden!
@@ -3263,7 +3262,7 @@ export function useWebGLGameLoop(params: UseWebGLGameLoopParams) {
 							confetti({ particleCount: 100, spread: 85, origin: { y: 0.45 } });
 							setWatchEventBanner({
 								title: `🎓 ORAL DEFENSE TRIUMPH — REVIEWER #2 CONCEDES!`,
-								subtitle: `Tenured Prof. Rook signed the Acceptance Certificate! Click "Restore Chess Pieces & Unlock Checkmate Yesterday" in the Colloquium Panel!`,
+								subtitle: `Tenured Prof. Rook signed the certificate. The manuscript returns as it was written.`,
 							});
 							setBattleLogs((prev) => [
 								{

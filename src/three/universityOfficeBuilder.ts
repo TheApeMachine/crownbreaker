@@ -5143,10 +5143,8 @@ export function updateUniversityOfficeScene(
 		cafeteriaQueuePosition: number | null;
 		cafeteriaServiceProgress: number;
 		activeDryCleaningTicket: DryCleaningTicket | null;
-		lemmaIntegrity: number;
-		boundaryGaugeVerified: boolean;
-		jacobianSignFlipped: boolean;
-		chiralLabDataAttached: boolean;
+		chalkLines: string[];
+		manuscriptLine: string;
 		journalRejections: number;
 		hIndex: number;
 		personalBalance: number;
@@ -5157,9 +5155,6 @@ export function updateUniversityOfficeScene(
 		isRidingTram?: boolean;
 		tramDestinationStationId?: string | null;
 		livingInOffice4B?: boolean;
-		hermitianBoundaryBalanced?: boolean;
-		chshS?: number;
-		monogamyLemmaAnnotated?: boolean;
 	},
 ) {
 	const isShattering = state.realityShatterProgressSec > 0;
@@ -5406,9 +5401,7 @@ export function updateUniversityOfficeScene(
 		updateHumanCharacterLabel(
 			rig.tobyRig,
 			"Toby · Grad Student",
-			state.lemmaIntegrity >= 100
-				? "Lemma 3.2 Verified!"
-				: "Click to discuss Jacobian Sign",
+			"His thesis is still open",
 			"#38bdf8",
 		);
 	}
@@ -5511,7 +5504,7 @@ export function updateUniversityOfficeScene(
 	rig.officeLivingPropsGroup.visible = Boolean(state.livingInOffice4B);
 
 	// 6. Update Room 4B Chalkboard & CRT Monitor
-	const chalkSig = `${state.dayName}_${state.lemmaIntegrity}_${state.boundaryGaugeVerified}_${state.jacobianSignFlipped}_${state.chiralLabDataAttached}_${state.journalRejections}_${state.publishedAccepted}_${state.hermitianBoundaryBalanced}_${state.chshS}_${state.monogamyLemmaAnnotated}`;
+	const chalkSig = `${state.dayName}_${state.journalRejections}_${state.publishedAccepted}_${(state.chalkLines || []).join("|")}_${state.manuscriptLine}`;
 	if (chalkSig !== rig.lastChalkSignature) {
 		rig.lastChalkSignature = chalkSig;
 		const ctx = rig.chalkboardCanvas.getContext("2d");
@@ -5524,82 +5517,29 @@ export function updateUniversityOfficeScene(
 
 			ctx.fillStyle = "#f8fafc";
 			ctx.font = "bold 26px Georgia, serif";
-			ctx.fillText("ROOM 4B CHALKBOARD — CENTRAL LEMMA 3.2 WORKBENCH", 36, 54);
+			ctx.fillText("ROOM 4B — CENTRAL LEMMA 3.2", 36, 52);
 
 			ctx.fillStyle = "#fde68a";
-			ctx.font = "italic 20px Georgia, serif";
+			ctx.font = "italic 18px Georgia, serif";
 			ctx.fillText(
-				'Manuscript: "On the Nonexistence of Monarchs in Retrocausal Systems"',
+				'"On the Nonexistence of Monarchs in Retrocausal Systems"',
 				36,
-				90,
+				84,
 			);
 
-			ctx.font = "18px monospace";
-			ctx.fillStyle = state.boundaryGaugeVerified ? "#6ee7b7" : "#fca5a5";
-			ctx.fillText(
-				state.boundaryGaugeVerified
-					? "✓ [1] Boundary Gauge: ψ(t₀−1) = −γ₅ψ(t₀) (Chiral Anti-Periodic)"
-					: "✗ [1] Boundary Gauge: UNVERIFIED (Surface commutator diverges)",
-				36,
-				140,
-			);
-
-			ctx.fillStyle = state.jacobianSignFlipped ? "#6ee7b7" : "#fca5a5";
-			ctx.fillText(
-				state.jacobianSignFlipped
-					? "✓ [2] Jacobian: det = λ² + κ² > 0 (Bounded)"
-					: "✗ [2] Jacobian: Toby found −κ sign error!",
-				36,
-				175,
-			);
-
-			ctx.fillStyle = state.hermitianBoundaryBalanced ? "#6ee7b7" : "#fca5a5";
-			ctx.fillText(
-				state.hermitianBoundaryBalanced
-					? "✓ [3] Hermitian ∂M: ⟨φ|Hψ⟩ = ⟨Hφ|ψ⟩ · λ_k ∈ ℝ"
-					: "✗ [3] Non-Hermitian leak at ∂M · ∑P_i ≠ 1",
-				36,
-				210,
-			);
-
-			const chsh = state.chshS ?? 0;
-			ctx.fillStyle =
-				chsh >= 2 * Math.SQRT2 - 0.05
-					? "#6ee7b7"
-					: chsh > 2
-						? "#fcd34d"
-						: "#fca5a5";
-			ctx.fillText(
-				`[4] CHSH S = ${chsh.toFixed(3)}  (classical ≤2 · Tsirelson ≤2√2)`,
-				36,
-				245,
-			);
-
-			ctx.fillStyle = state.chiralLabDataAttached ? "#6ee7b7" : "#fcd34d";
-			ctx.fillText(
-				state.chiralLabDataAttached
-					? "✓ [5] Chiral Interferometer Data (4.8σ)"
-					: "○ [5] Lab run: needs Bishop access",
-				36,
-				280,
-			);
-
-			if (state.monogamyLemmaAnnotated) {
-				ctx.fillStyle = "#f9a8d4";
-				ctx.font = "17px monospace";
-				ctx.fillText(
-					"✓ CKW MONOGAMY: τ(A|B)+τ(A|C) ≤ τ(A|BC) — swap decoheres the crown",
-					36,
-					315,
-				);
-			}
+			ctx.fillStyle = "#e2e8f0";
+			ctx.font = "16px monospace";
+			const lines = state.chalkLines || [];
+			lines.slice(0, 8).forEach((line, i) => {
+				ctx.fillText(line.slice(0, 110), 36, 128 + i * 28);
+			});
 
 			ctx.fillStyle = "#38bdf8";
-			ctx.font = "bold 22px monospace";
+			ctx.font = "16px monospace";
 			ctx.fillText(
-				`PROOF INTEGRITY: ${state.lemmaIntegrity}%   |   JTC REJECTIONS: ${state.journalRejections}/3`,
+				`JTC REJECTIONS: ${state.journalRejections}/3`,
 				36,
-				360,
+				128 + Math.min(8, lines.length) * 28 + 16,
 			);
 
 			if (state.publishedAccepted) {
@@ -5651,7 +5591,7 @@ export function updateUniversityOfficeScene(
 					: 0;
 			crt.fillText(`> Personal Checking: $${pb.toFixed(2)}`, 20, 88);
 			crt.fillText(`> Dept. Grant Acct:  $${db.toFixed(2)}`, 20, 122);
-			crt.fillText(`> Lemma 3.2 Proof:   ${state.lemmaIntegrity}%`, 20, 156);
+			crt.fillText(`> Board: ${String(state.manuscriptLine || "").slice(0, 42)}`, 20, 156);
 			crt.fillText(`> Shirt Condition:   ${state.shirtState}`, 20, 190);
 			rig.crtScreenTex.needsUpdate = true;
 		}
